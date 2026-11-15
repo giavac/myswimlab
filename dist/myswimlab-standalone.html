@@ -1,0 +1,2904 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MySwimLab v0.4.3</title>
+  <style>
+:root {
+  font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  color:#122d51;
+  background:#f6f9fc;
+  font-synthesis:none
+}
+* {
+  box-sizing:border-box
+}
+body {
+  margin:0
+}
+button,input,textarea {
+  font:inherit
+}
+button {
+  cursor:pointer
+}
+button:focus-visible,input:focus-visible,textarea:focus-visible {
+  outline:3px solid #7ec1fa;
+  outline-offset:2px
+}
+h1,h2,h3,p {
+  margin-top:0
+}
+h1 {
+  font-size:30px;
+  letter-spacing:-1.3px;
+  margin-bottom:5px
+}
+h2 {
+  font-size:16px;
+  letter-spacing:-.25px;
+  margin-bottom:4px
+}
+h3 {
+  font-size:14px
+}
+p {
+  line-height:1.55
+}
+.shell {
+  display:flex;
+  min-height:100vh
+}
+.sidebar {
+  width:226px;
+  min-width:226px;
+  background:#fff;
+  border-right:1px solid #e5edf5;
+  display:flex;
+  flex-direction:column;
+  position:sticky;
+  top:0;
+  height:100vh
+}
+.logo {
+  height:76px;
+  display:flex;
+  gap:10px;
+  align-items:center;
+  padding:20px;
+  border-bottom:1px solid #e8eef5;
+  font-weight:800;
+  font-size:21px;
+  letter-spacing:-.8px
+}
+.mark {
+  color:#168fc6;
+  display:flex
+}
+.nav {
+  padding:20px 12px;
+  display:grid;
+  gap:5px
+}
+.navitem {
+  width:100%;
+  padding:13px 15px;
+  text-align:left;
+  border:none;
+  background:transparent;
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  color:#425a79;
+  font-size:14px;
+  font-weight:550
+}
+.navitem:hover {
+  background:#f2f8fc
+}
+.navitem.active {
+  background:#e6f1ff;
+  color:#1259af;
+  font-weight:730
+}
+.navicon {
+  font-size:23px;
+  width:25px;
+  text-align:center;
+  line-height:1
+}
+.asidefoot {
+  margin:auto 14px 17px;
+  background:#f4f9fd;
+  border:1px solid #e4edf5;
+  border-radius:10px;
+  padding:16px
+}
+.asidefoot p {
+  font-size:12px;
+  color:#6d829b;
+  margin:6px 0 12px
+}
+.privacy {
+  font-weight:700;
+  font-size:12px;
+  color:#287c9e
+}
+.asidelink {
+  border:0;
+  color:#2368b6;
+  background:none;
+  font-size:12px;
+  padding:0;
+  text-align:left
+}
+.workspace {
+  min-width:0;
+  flex:1
+}
+.topbar {
+  height:auto;
+  min-height:76px;
+  background:#fff;
+  border-bottom:1px solid #e4ecf5;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 30px;
+  gap:16px
+}
+.periods,.switch {
+  display:flex;
+  align-items:center;
+  background:#f3f7fb;
+  border:1px solid #e7eff6;
+  border-radius:7px;
+  padding:3px;
+  gap:2px
+}
+.periods button,.switch button {
+  border:0;
+  background:none;
+  color:#637b9a;
+  border-radius:5px;
+  padding:9px 15px;
+  font-size:12px;
+  font-weight:700
+}
+.periods button.chosen,.switch button.chosen {
+  background:#2778bf;
+  color:#fff;
+  box-shadow:0 1px 4px #1b4c8f21
+}
+.topactions {
+  display:flex;
+  gap:9px;
+  align-items:center;
+  flex-wrap:wrap;
+  justify-content:flex-end
+}
+.folder-source {
+  font-size:12px;
+  color:#637b9a;
+  max-width:180px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  overflow:hidden
+}
+.primary {
+  border:0;
+  border-radius:7px;
+  background:#0798bb;
+  color:#fff;
+  padding:11px 17px;
+  font-weight:700;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:9px;
+  box-shadow:0 2px 5px #005c7615
+}
+.primary:hover {
+  background:#057f9e
+}
+.mobilelogo {
+  display:none
+}
+main {
+  padding:27px 30px 25px;
+  max-width:1750px;
+  margin:auto
+}
+.pagehead {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:21px;
+  gap:18px
+}
+.pagehead p {
+  color:#687f9d;
+  font-size:14px;
+  margin:0
+}
+.metrics {
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:12px;
+  margin-bottom:15px
+}
+.metrics.four {
+  grid-template-columns:repeat(4,minmax(0,1fr))
+}
+.metric,.panel {
+  background:#fff;
+  border:1px solid #e4ebf3;
+  box-shadow:0 2px 9px #1b4c6d07;
+  border-radius:8px
+}
+.metric {
+  min-height:134px;
+  padding:18px 17px
+}
+.metric-top {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  font-size:13px;
+  font-weight:650;
+  color:#526d8b
+}
+.metric-icon {
+  color:#2396c2
+}
+.metric strong {
+  display:block;
+  margin:12px 0 9px;
+  font-size:29px;
+  letter-spacing:-1px;
+  color:#0b274c
+}
+.metric strong small {
+  font-size:13px;
+  letter-spacing:0;
+  color:#6b83a0;
+  font-weight:500
+}
+.metric p {
+  font-size:11px;
+  color:#8092a8;
+  margin:0
+}
+.twocol {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+  margin-bottom:15px
+}
+.twocol.unequal {
+  grid-template-columns:1.4fr 1fr
+}
+.panel {
+  padding:19px;
+  margin-bottom:15px;
+  min-width:0
+}
+.twocol .panel {
+  margin-bottom:0
+}
+.panelhead {
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  margin-bottom:12px;
+  gap:10px
+}
+.panelhead p {
+  color:#90a0b2;
+  font-size:11px;
+  margin:0
+}
+.panelhead svg {
+  color:#1b90b9
+}
+.plot {
+  width:100%;
+  height:215px;
+  display:block;
+  overflow:visible
+}
+.bars {
+  height:215px;
+  display:flex;
+  align-items:stretch;
+  gap:15px;
+  padding:14px 9px 4px
+}
+.barcol {
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  gap:8px;
+  text-align:center
+}
+.bar-track {
+  flex:1;
+  min-height:0;
+  border-bottom:1px solid #dce7ef;
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  background:repeating-linear-gradient(to top,#f0f5f9 0,#f0f5f9 1px,transparent 1px,transparent 40px)
+}
+.bar-fill {
+  width:min(58%,46px);
+  background:linear-gradient(0deg,#2386d4,#7dc8f0);
+  border-radius:3px 3px 0 0
+}
+.barcol small {
+  font-size:11px;
+  color:#8195aa;
+  white-space:nowrap
+}
+.bests {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:9px
+}
+.bests>div {
+  padding:12px;
+  border:1px solid #eef2f6;
+  background:#fbfdff;
+  border-radius:6px;
+  display:flex;
+  flex-direction:column;
+  gap:5px
+}
+.bests span {
+  font-size:12px;
+  color:#6b87a1
+}
+.bests strong {
+  font-size:24px;
+  letter-spacing:-.8px
+}
+.bests small {
+  font-size:11px;
+  color:#8a9aab
+}
+.insight {
+  background:linear-gradient(140deg,#f6fffe,#fff 70%);
+  border-color:#cdeae5
+}
+.spark {
+  color:#12a7a3;
+  font-size:22px
+}
+.insight-body {
+  font-size:14px;
+  line-height:1.6;
+  color:#31536d
+}
+.insight-body p {
+  margin:10px 0
+}
+.fineprint {
+  font-size:11px!important;
+  color:#93a1b1;
+  line-height:1.6;
+  margin-top:14px
+}
+.tablewrap {
+  width:100%;
+  overflow-x:auto
+}
+table {
+  border-collapse:collapse;
+  width:100%;
+  font-size:12px;
+  white-space:nowrap;
+  text-align:left
+}
+thead {
+  background:#f6f9fc;
+  color:#647f9d
+}
+th,td {
+  padding:12px 10px;
+  border-bottom:1px solid #edf1f6
+}
+th {
+  font-weight:650
+}
+td {
+  color:#4e6683
+}
+td.strong {
+  font-weight:700;
+  color:#234a78
+}
+tbody tr[data-select] {
+  cursor:pointer
+}
+tbody tr[data-select]:hover {
+  background:#eff8ff
+}
+.arrow {
+  font-size:24px;
+  color:#478fbd
+}
+.tag {
+  display:inline-block;
+  border:1px solid #e1e8ef;
+  background:#f4f6fa;
+  color:#728294;
+  font-size:10px;
+  font-weight:750;
+  letter-spacing:.4px;
+  border-radius:4px;
+  padding:4px 7px
+}
+.tag.real {
+  background:#eaf9f5;
+  color:#18866d;
+  border-color:#c9e9de
+}
+.subtle {
+  border:0;
+  background:none;
+  color:#2778c5;
+  font-size:12px;
+  font-weight:650;
+  white-space:nowrap
+}
+.subtle:hover {
+  text-decoration:underline
+}
+.breadcrumb {
+  font-size:11px;
+  color:#7d98b1;
+  letter-spacing:.8px;
+  font-weight:800;
+  margin-bottom:8px
+}
+.pageactions {
+  display:flex;
+  align-items:center;
+  gap:10px
+}
+.danger-lite {
+  border:1px solid #f1d7d6;
+  background:#fff9f9;
+  color:#ac4845;
+  border-radius:6px;
+  padding:9px 11px;
+  font-size:12px;
+  font-weight:650
+}
+.info {
+  background:#f6fbff;
+  border-color:#d5e9f8;
+  color:#36536c
+}
+.info p {
+  margin:6px 0 0;
+  color:#75869d;
+  font-size:13px
+}
+.length-scroll {
+  max-height:390px;
+  overflow:auto
+}
+.fieldlabel {
+  display:block;
+  font-size:12px;
+  font-weight:700;
+  color:#526d8b;
+  margin:15px 0 6px
+}
+textarea,input[type=text] {
+  width:100%;
+  padding:12px;
+  border:1px solid #d8e4ee;
+  border-radius:6px;
+  background:#fbfdff;
+  color:#1b395b;
+  resize:vertical
+}
+textarea {
+  min-height:140px
+}
+.save {
+  margin-top:16px
+}
+.muted {
+  color:#7d91a8;
+  font-size:13px
+}
+.hint {
+  color:#8da0b4;
+  font-size:13px;
+  padding:35px
+}
+.empty {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  min-height:310px;
+  justify-content:center
+}
+.empty-symbol {
+  color:#1c9bc0
+}
+.empty h3 {
+  font-size:18px;
+  margin:11px 0 0
+}
+.empty p {
+  color:#8699b0;
+  font-size:13px;
+  margin:9px 0 18px
+}
+.empty-chart {
+  height:210px;
+  display:grid;
+  place-items:center;
+  color:#93a1b3;
+  font-size:13px
+}
+.buttonstack {
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-top:25px
+}
+.secondary {
+  background:#eef6fc;
+  border:1px solid #d0e6f4;
+  color:#286caa;
+  border-radius:6px;
+  padding:10px 13px;
+  font-size:12px;
+  font-weight:700
+}
+footer {
+  padding:20px 30px;
+  color:#a5b2c0;
+  font-size:11px
+}
+footer a {
+  color:#8b9db0
+}
+#toast {
+  position:fixed;
+  right:23px;
+  bottom:23px;
+  background:#173e5b;
+  color:#fff;
+  padding:13px 20px;
+  border-radius:9px;
+  box-shadow:0 7px 25px #0d305a3b;
+  font-size:13px;
+  opacity:0;
+  transform:translateY(18px);
+  pointer-events:none;
+  transition:all .2s
+}
+#toast.shown {
+  opacity:1;
+  transform:translateY(0)
+}
+@media(max-width:1200px) {
+  .metrics {
+    grid-template-columns:repeat(3,1fr)
+  }
+  .sidebar {
+    width:195px;
+    min-width:195px
+  }
+  .topbar {
+    padding:0 18px
+  }
+  main {
+    padding:22px 18px
+  }
+}
+@media(max-width:830px) {
+  .sidebar {
+    display:none
+  }
+  .mobilelogo {
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-weight:800
+  }
+  .topbar {
+    height:auto;
+    min-height:70px;
+    padding:12px 15px;
+    flex-wrap:wrap
+  }
+  .topactions {
+    gap:7px
+  }
+  .periods button,.switch button {
+    padding:8px 9px
+  }
+  .metrics,.metrics.four {
+    grid-template-columns:repeat(2,1fr)
+  }
+  .twocol,.twocol.unequal {
+    grid-template-columns:1fr
+  }
+  main {
+    padding:18px 13px
+  }
+  .pagehead h1 {
+    font-size:25px
+  }
+}
+@media(max-width:540px) {
+  .topbar {
+    gap:10px
+  }
+  .topactions {
+    width:100%;
+    justify-content:space-between
+  }
+  .upload span {
+    display:inline
+  }
+  .metrics,.metrics.four {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px
+  }
+  .metric {
+    padding:14px 11px;
+    min-height:118px
+  }
+  .metric strong {
+    font-size:23px
+  }
+  .metric-top {
+    font-size:11px
+  }
+  .panel {
+    padding:14px
+  }
+  .pagehead {
+    align-items:start
+  }
+  .pagehead .tag {
+    font-size:8px
+  }
+  .bests {
+    grid-template-columns:repeat(2,1fr)
+  }
+  .plot {
+    height:185px
+  }
+  h1 {
+    font-size:24px
+  }
+}
+/* MySwimLab visual refresh v0.2 */
+:root {
+  color:#10274a;
+  background:#f3f7fb
+}
+body {
+  background:#f3f7fb
+}
+.sidebar {
+  width:236px;
+  min-width:236px;
+  border-color:#dfe9f2;
+  box-shadow:2px 0 12px #11325407
+}
+.logo {
+  font-size:22px;
+  height:84px;
+  letter-spacing:-.9px
+}
+.nav {
+  padding:22px 13px;
+  gap:6px
+}
+.navitem {
+  font-size:14px;
+  padding:14px 16px;
+  border-radius:9px
+}
+.navitem.active {
+  background:#e2f0fc;
+  color:#0968ae
+}
+.navicon {
+  font-size:20px
+}
+.topbar {
+  height:80px;
+  padding:0 33px
+}
+main {
+  max-width:1900px;
+  padding:32px 34px 38px
+}
+.pagehead {
+  margin-bottom:24px
+}
+.pagehead h1 {
+  font-size:34px;
+  font-weight:780;
+  letter-spacing:-1.5px;
+  margin-bottom:7px
+}
+.pagehead p {
+  font-size:15px
+}
+.eyebrow {
+  font-size:10px;
+  letter-spacing:1.25px;
+  font-weight:800;
+  color:#429ab9;
+  margin-bottom:8px
+}
+.metrics {
+  gap:14px;
+  margin-bottom:16px
+}
+.metric,.panel {
+  border-radius:11px;
+  border-color:#e1eaf3;
+  box-shadow:0 4px 18px #183c6309
+}
+.metric {
+  padding:20px;
+  min-height:142px;
+  position:relative;
+  overflow:hidden
+}
+.metric:after {
+  content:"";
+  position:absolute;
+  right:-21px;
+  bottom:-30px;
+  width:104px;
+  height:104px;
+  border:15px solid #e6f3fc;
+  border-radius:100%;
+  opacity:.55;
+  pointer-events:none
+}
+.metric-top {
+  font-size:13px;
+  color:#58708e
+}
+.metric strong {
+  font-size:33px;
+  color:#102e58;
+  margin:15px 0 7px
+}
+.metric strong small {
+  font-size:14px
+}
+.metric p {
+  font-size:11px;
+  color:#7990a6
+}
+.metric-icon {
+  color:#0795c3
+}
+.twocol {
+  gap:16px;
+  margin-bottom:16px
+}
+.twocol.unequal {
+  grid-template-columns:1.48fr 1fr
+}
+.panel {
+  padding:22px;
+  margin-bottom:16px
+}
+.twocol .panel {
+  margin-bottom:0
+}
+.panelhead {
+  margin-bottom:18px
+}
+.panelhead h2 {
+  font-size:16px;
+  font-weight:760;
+  color:#15345d
+}
+.panelhead p {
+  font-size:12px;
+  color:#8195aa;
+  margin-top:5px
+}
+.panel-icon {
+  width:34px;
+  height:34px;
+  border-radius:9px;
+  background:#eef7fc;
+  display:grid;
+  place-items:center;
+  color:#0e8fc1
+}
+.plot {
+  height:235px
+}
+.bars {
+  height:235px;
+  gap:24px
+}
+.bar-fill {
+  max-width:66px;
+  box-shadow:0 0 0 1px #0472ae12
+}
+.besttile {
+  min-height:95px!important;
+  background:linear-gradient(145deg,#f9fcff,#fff)!important;
+  padding:15px!important;
+  border-color:#dfeaf4!important
+}
+.besttile strong {
+  font-size:26px!important;
+  color:#12355d
+}
+.besttile span {
+  color:#4682a6;
+  font-weight:700
+}
+.besttile small {
+  font-size:11px!important
+}
+.best-pace {
+  font-size:11px!important;
+  color:#147e9b!important
+}
+.insight {
+  background:linear-gradient(135deg,#ecfbfc 0%,#f8fefd 55%,#fff 100%);
+  border-color:#c8e9e8
+}
+.insight-body {
+  font-size:14px;
+  line-height:1.7;
+  color:#345571
+}
+.insight-body b {
+  font-size:16px;
+  color:#154f69;
+  line-height:1.4
+}
+.insight-body p {
+  margin:11px 0
+}
+.insight-body p.muted {
+  font-size:12px;
+  color:#7892a2
+}
+.insight-link {
+  margin-top:8px
+}
+.nextstep {
+  background:linear-gradient(115deg,#fff,#f6fbff)
+}
+.feature-session {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:18px;
+  padding:15px 3px 22px
+}
+.feature-session h3 {
+  font-size:21px;
+  color:#103458;
+  margin:0 0 9px
+}
+.feature-session p {
+  font-size:13px;
+  color:#6885a0;
+  margin:0
+}
+.feature-session .primary {
+  white-space:nowrap
+}
+.feature-foot {
+  border-top:1px solid #e4edf4;
+  padding:17px 3px 0;
+  color:#7690a6;
+  font-size:12px;
+  line-height:1.6
+}
+.tablewrap {
+  border-radius:7px;
+  overflow-x:auto
+}
+table {
+  font-size:12px
+}
+thead {
+  background:#f1f6fb
+}
+th,td {
+  padding:14px 12px
+}
+tbody tr:nth-child(even) {
+  background:#fbfdff
+}
+.tag {
+  letter-spacing:.6px
+}
+@media(max-width:1300px) {
+  .metrics {
+    grid-template-columns:repeat(3,1fr)
+  }
+  .twocol.unequal {
+    grid-template-columns:1.2fr 1fr
+  }
+}
+@media(max-width:850px) {
+  .sidebar {
+    display:none
+  }
+  .twocol,.twocol.unequal {
+    grid-template-columns:1fr
+  }
+  .metrics {
+    grid-template-columns:repeat(2,1fr)
+  }
+  main {
+    padding:21px 15px
+  }
+  .topbar {
+    height:auto
+  }
+  .feature-session {
+    flex-wrap:wrap
+  }
+  .pagehead h1 {
+    font-size:28px
+  }
+}
+@media(max-width:520px) {
+  .metric {
+    min-height:123px;
+    padding:14px
+  }
+  .metric strong {
+    font-size:26px
+  }
+  .bests {
+    grid-template-columns:repeat(2,1fr)
+  }
+}
+
+/* The session title is a native keyboard-focusable action inside its table row. */
+.session-link { display: inline; border: 0; background: none; color: inherit;
+  font: inherit; font-weight: 700; cursor: pointer; padding: 2px 0; text-align: left; }
+.session-link:hover { text-decoration: underline; }
+.session-link:focus-visible { outline: 2px solid #087db8; outline-offset: 3px; }
+.effort-group + .effort-group { margin-top: 20px; }
+.effort-group h3 { margin: 10px 0; font-size: 14px; }
+
+/* Quality decisions never delete or rewrite FIT data. */
+.quality-panel {
+  background:#f4faff;
+  border-color:#cfe5f4;
+  margin-bottom:14px;
+}
+.quality-panel b { color:#174d70; }
+.quality-panel p { color:#57738c; font-size:13px; line-height:1.6; margin:9px 0 0; }
+.quality-jump, .quality-action {
+  border:1px solid #bcd8ea;
+  background:white;
+  color:#166a9a;
+  border-radius:5px;
+  font-size:11px;
+  padding:5px 7px;
+  margin:3px 2px 3px 0;
+}
+.quality-jump:hover, .quality-action:hover { background:#e6f5ff; }
+.excluded-length { background:#fff4ec; }
+.excluded-length td { color:#965b32; }
+.quality-status { font-size:11px; }
+
+</style>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+
+// ===== src/fit/decoder.js =====
+/**
+ * Minimal FIT binary decoder. This module knows nothing about swimming or the UI.
+ *
+ * Output: [{ global: FIT global message number, fields: { fieldNumber: value } }]
+ * Unsupported developer fields are skipped rather than guessed.
+ */
+
+const FIT_EPOCH_MS = Date.UTC(1989, 11, 31);
+
+// The low five bits of a FIT base-type byte describe the scalar type.
+const TYPE_SIZES = {
+  0: 1, 1: 1, 2: 1, 3: 2, 4: 2, 5: 4, 6: 4, 7: 1,
+  8: 4, 9: 8, 10: 1, 11: 2, 12: 4, 13: 1, 14: 8, 15: 8, 16: 8
+};
+
+function fieldValue(fields, number) {
+  return fields?.[number] ?? null;
+}
+
+function isNumber(value) {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function scaledValue(value, divisor) {
+  return isNumber(value) ? value / divisor : null;
+}
+
+function fitDate(timestamp) {
+  return isNumber(timestamp)
+    ? new Date(FIT_EPOCH_MS + timestamp * 1000).toISOString()
+    : null;
+}
+
+/** FIT invalid sentinels depend on the base type, not only its width. */
+function readScalar(view, position, type, littleEndian) {
+  const readUnsigned64 = () => view.getBigUint64(position, littleEndian);
+  const readSigned64 = () => view.getBigInt64(position, littleEndian);
+  let value;
+
+  switch (type) {
+    case 0: case 2: case 10: case 13: value = view.getUint8(position); break;
+    case 1: value = view.getInt8(position); break;
+    case 3: value = view.getInt16(position, littleEndian); break;
+    case 4: case 11: value = view.getUint16(position, littleEndian); break;
+    case 5: value = view.getInt32(position, littleEndian); break;
+    case 6: case 12: value = view.getUint32(position, littleEndian); break;
+    case 8: value = view.getFloat32(position, littleEndian); break;
+    case 9: value = view.getFloat64(position, littleEndian); break;
+    case 14: value = readSigned64(); break;
+    case 15: case 16: value = readUnsigned64(); break;
+    default: return null;
+  }
+
+  // 'z' unsigned types reserve ZERO as invalid; enum and byte reserve MAX.
+  const invalid = {
+    0: 255, 1: 127, 2: 255, 3: 32767, 4: 65535,
+    5: 2147483647, 6: 4294967295, 10: 0, 11: 0, 12: 0,
+    13: 255, 14: 9223372036854775807n,
+    15: 18446744073709551615n, 16: 0n
+  };
+  if (value === invalid[type]) return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+
+  // Keep 64-bit integers exact. Larger values remain bigint, not rounded floats.
+  if (value <= BigInt(Number.MAX_SAFE_INTEGER) &&
+      value >= BigInt(Number.MIN_SAFE_INTEGER)) return Number(value);
+  return value;
+}
+
+function readField(view, position, size, baseType, littleEndian) {
+  const type = baseType & 31;
+
+  if (type === 7) {
+    const bytes = new Uint8Array(view.buffer, view.byteOffset + position, size);
+    return new TextDecoder().decode(bytes).replace(/\0.*$/, '').trim();
+  }
+
+  const scalarSize = TYPE_SIZES[type];
+  if (!scalarSize || size % scalarSize !== 0) return null;
+
+  if (size === scalarSize) {
+    return readScalar(view, position, type, littleEndian);
+  }
+
+  const values = [];
+  for (let offset = 0; offset < size; offset += scalarSize) {
+    values.push(readScalar(view, position + offset, type, littleEndian));
+  }
+  return values;
+}
+
+/** Decode FIT global messages from an ArrayBuffer. */
+function decodeMessages(buffer) {
+  const view = new DataView(buffer);
+  if (view.byteLength < 16) throw new Error('File too short for a FIT activity.');
+
+  const headerSize = view.getUint8(0);
+  const signature = String.fromCharCode(...new Uint8Array(buffer, 8, 4));
+  if (![12, 14].includes(headerSize) || signature !== '.FIT') {
+    throw new Error('Not a valid FIT file header. Export a Garmin .fit activity.');
+  }
+
+  const messageEnd = headerSize + view.getUint32(4, true);
+  if (messageEnd > view.byteLength) throw new Error('Truncated FIT file.');
+
+  const definitions = new Map();
+  const messages = [];
+  let cursor = headerSize;
+  let lastTimestamp = null;
+
+  function ensureBytes(count, description) {
+    if (cursor + count > messageEnd) throw new Error(`Truncated ${description}.`);
+  }
+
+  while (cursor < messageEnd) {
+    const header = view.getUint8(cursor++);
+    const compressed = (header & 0x80) !== 0;
+    const localNumber = compressed ? (header >> 5) & 3 : header & 15;
+    const definitionMessage = !compressed && (header & 0x40) !== 0;
+
+    if (definitionMessage) {
+      ensureBytes(5, 'FIT definition');
+      cursor += 1; // reserved byte
+      const littleEndian = view.getUint8(cursor++) === 0;
+      const globalNumber = view.getUint16(cursor, littleEndian);
+      cursor += 2;
+
+      const fieldCount = view.getUint8(cursor++);
+      const fields = [];
+      for (let index = 0; index < fieldCount; index++) {
+        ensureBytes(3, 'FIT field definition');
+        fields.push({
+          number: view.getUint8(cursor++),
+          size: view.getUint8(cursor++),
+          baseType: view.getUint8(cursor++)
+        });
+      }
+
+      const developerFields = [];
+      if ((header & 0x20) !== 0) {
+        ensureBytes(1, 'FIT developer field count');
+        const count = view.getUint8(cursor++);
+        for (let index = 0; index < count; index++) {
+          ensureBytes(3, 'FIT developer field definition');
+          developerFields.push({
+            number: view.getUint8(cursor++),
+            size: view.getUint8(cursor++),
+            developer: view.getUint8(cursor++)
+          });
+        }
+      }
+
+      definitions.set(localNumber, { globalNumber, littleEndian, fields, developerFields });
+      continue;
+    }
+
+    const definition = definitions.get(localNumber);
+    if (!definition) throw new Error('FIT data references a missing definition.');
+
+    const values = {};
+    for (const field of definition.fields) {
+      // The compressed timestamp header replaces field 253; it has no payload bytes.
+      if (compressed && field.number === 253) continue;
+      ensureBytes(field.size, 'FIT data');
+      values[field.number] = readField(view, cursor, field.size, field.baseType, definition.littleEndian);
+      cursor += field.size;
+    }
+    for (const field of definition.developerFields) {
+      ensureBytes(field.size, 'FIT developer data');
+      cursor += field.size;
+    }
+
+    if (compressed && isNumber(lastTimestamp)) {
+      const offset = header & 31;
+      let timestamp = lastTimestamp - (lastTimestamp % 32) + offset;
+      if (timestamp < lastTimestamp) timestamp += 32;
+      values[253] ??= timestamp;
+    }
+    if (isNumber(values[253])) lastTimestamp = values[253];
+
+    messages.push({ global: definition.globalNumber, fields: values });
+  }
+
+  return messages;
+}
+
+
+
+// ===== src/fit/swimming-parser.js =====
+/**
+ * Translate the FIT messages into MySwimLab's device-independent SwimSession.
+ * See docs/data-model.md for the complete shape and units.
+ */
+const GLOBAL_SESSION = 18;
+const GLOBAL_RECORD = 20;
+const GLOBAL_LENGTH = 101;
+const SPORT_SWIMMING = 5;
+const SUB_SPORT_POOL = 17;
+const SUB_SPORT_OPEN_WATER = 18;
+
+function convertLength(message, poolMeters, sequence) {
+  const fields = message.fields;
+  const isRest = fieldValue(fields, 12) === 0;
+
+  return {
+    index: fieldValue(fields, 254),
+    sequence,
+    start: fitDate(fieldValue(fields, 2)),
+    end: fitDate(fieldValue(fields, 253)),
+    duration: scaledValue(fieldValue(fields, 4), 1000)
+      ?? scaledValue(fieldValue(fields, 3), 1000),
+    elapsed: scaledValue(fieldValue(fields, 3), 1000),
+    strokes: fieldValue(fields, 5),
+    cadence: fieldValue(fields, 9),
+    stroke: fieldValue(fields, 7),
+    speed: scaledValue(fieldValue(fields, 6), 1000),
+    isRest,
+    distance: isRest ? 0 : poolMeters
+  };
+}
+
+function sessionTitle(filename) {
+  const title = filename.replace(/\.fit$/i, '').replace(/[_-]/g, ' ');
+  return /^\d+\s*activity$/i.test(title) ? 'Swimming session' : title;
+}
+
+/**
+ * @param {ArrayBuffer} buffer - A raw FIT file.
+ * @param {string} filename - Original file name (used for display only).
+ * @returns {object} A normalized SwimSession.
+ */
+function parseFit(buffer, filename = 'Garmin swim', options = {}) {
+  const messages = decodeMessages(buffer);
+  const sessionMessages = messages.filter(message => message.global === GLOBAL_SESSION);
+  const lengthMessages = messages.filter(message => message.global === GLOBAL_LENGTH);
+  const recordMessages = messages.filter(message => message.global === GLOBAL_RECORD);
+
+  const swimmingSessions = sessionMessages.filter(message =>
+    fieldValue(message.fields, 5) === SPORT_SWIMMING);
+  if (swimmingSessions.length > 1) {
+    // Do not merge several workouts' lengths into one misleading activity.
+    throw new Error('Multi-session FIT files are not yet supported.');
+  }
+  const session = swimmingSessions[0] ?? sessionMessages[0];
+
+  if (!session && lengthMessages.length === 0) {
+    throw new Error('This FIT file does not contain a swimming session.');
+  }
+
+  const fields = session?.fields ?? {};
+  const sport = fieldValue(fields, 5);
+  if (session && isNumber(sport) && sport !== SPORT_SWIMMING) {
+    throw new Error('This FIT file contains a non-swimming activity.');
+  }
+
+  // FIT pool_length is ALWAYS hundredths of a meter, even for a yard pool.
+  // pool_length_unit controls the display unit only (0=m, 1=yd).
+  const poolMeters = scaledValue(fieldValue(fields, 44), 100) || 25;
+  const poolUnit = fieldValue(fields, 46) === 1 ? 'yd' : 'm';
+  const lengths = lengthMessages.map((message, index) => convertLength(message, poolMeters, index));
+  const activeLengths = lengths.filter(length => !length.isRest);
+
+  let distance = scaledValue(fieldValue(fields, 9), 100);
+  if (!isNumber(distance) || distance <= 0) {
+    distance = activeLengths.reduce((total, length) => total + length.distance, 0);
+  }
+
+  const subSport = fieldValue(fields, 6);
+  const swimType = subSport === SUB_SPORT_POOL ? 'pool'
+    : subSport === SUB_SPORT_OPEN_WATER ? 'open-water'
+    : lengths.length > 0 ? 'pool' : 'open-water';
+
+  // A pool session's FIT total_timer_time can include rests between sets.
+  // The actual swimming time is the sum of ACTIVE length durations, not that
+  // session timer. Garmin records rest periods as idle length messages.
+  const timerDuration = scaledValue(fieldValue(fields, 8), 1000);
+  const activeDuration = activeLengths.reduce((total, length) =>
+    total + (isNumber(length.duration) && length.duration > 0 ? length.duration : 0), 0);
+  const restDuration = lengths.reduce((total, length) =>
+    total + (length.isRest && isNumber(length.duration) && length.duration > 0
+      ? length.duration : 0), 0);
+
+  // Some Garmin Swim files also contain a nonstandard session field 78
+  // (total_swim_time). Use it only if active length durations are unavailable.
+  const swimTimeField = scaledValue(fieldValue(fields, 78), 1000);
+  let duration = timerDuration;
+  let durationBasis = 'timer';
+  if (swimType === 'pool' && activeDuration > 0) {
+    duration = activeDuration;
+    durationBasis = 'active-lengths';
+  } else if (swimType === 'pool' && isNumber(swimTimeField) && swimTimeField > 0) {
+    duration = swimTimeField;
+    durationBasis = 'session-swim-time';
+  }
+  if (!isNumber(duration) || duration <= 0) {
+    duration = activeDuration;
+    durationBasis = 'active-lengths';
+  }
+
+  const elapsed = scaledValue(fieldValue(fields, 7), 1000) || timerDuration || duration;
+  const start = fitDate(fieldValue(fields, 2))
+    ?? lengths.find(length => length.start)?.start
+    ?? fitDate(fieldValue(recordMessages[0]?.fields, 253))
+    ?? options.fallbackDate
+    ?? '1989-12-31T00:00:00.000Z';
+
+  return {
+    id: options.fileHash && !fitDate(fieldValue(fields, 2)) &&
+      !lengths.some(length => length.start) && !fitDate(fieldValue(recordMessages[0]?.fields, 253))
+      ? `fit-sha256-${options.fileHash}`
+      // Keep v0.4.1 IDs stable so existing local annotations are still found.
+      : `fit-${start}-${Math.round(distance)}-${(timerDuration || duration).toFixed(1)}`,
+    date: start,
+    title: sessionTitle(filename),
+    filename,
+    source: 'FIT',
+    sport: swimType,
+    poolMeters: swimType === 'pool' ? poolMeters : null,
+    poolUnit: swimType === 'pool' ? poolUnit : null,
+    distance: Math.round(distance * 100) / 100,
+    duration: Number(duration.toFixed(3)), // Rest-excluded swimming time for pool sessions.
+    timerDuration: isNumber(timerDuration) ? Number(timerDuration.toFixed(3)) : null,
+    restDuration: swimType === 'pool' ? Number(restDuration.toFixed(3)) : null,
+    durationBasis,
+    elapsed: Number(elapsed.toFixed(3)),
+    averageHR: isNumber(fieldValue(fields, 16)) ? fieldValue(fields, 16) : null,
+    lengths,
+    notes: '',
+    equipment: [],
+    importedAt: new Date().toISOString()
+  };
+}
+
+
+
+// ===== src/analytics/length-quality.js =====
+/**
+ * Quality control for individual pool lengths.
+ *
+ * FIT records are never edited. We automatically exclude only unusually fast
+ * lengths that ALSO have unusually few strokes. This conservative two-signal
+ * rule avoids rejecting genuine sprint efforts on pace alone.
+ *
+ * Users may override either decision. Overrides are keyed by stable FIT record
+ * sequence; they are stored with annotations, not in the original FIT file.
+ */
+const MIN_REFERENCE_LENGTHS = 8;
+const FAST_TIME_RATIO = 0.60;
+const LOW_STROKE_RATIO = 0.65;
+
+function median(values) {
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+function active(length) {
+  return length && !length.isRest && Number.isFinite(length.duration) && length.duration > 0 &&
+    Number.isFinite(length.distance) && length.distance > 0;
+}
+
+/**
+ * Returns one result per source record, including rest markers.
+ * Each result has { excluded, automatic, reason, manual }.
+ * Results are deterministic, calculated only from a normalized SwimSession.
+ */
+function assessLengths(session) {
+  const lengths = session.lengths || [];
+  const activeLengths = lengths.filter(active);
+  const reference = activeLengths.filter(length => Number.isFinite(length.strokes) && length.strokes > 0);
+  const baselineTime = reference.length >= MIN_REFERENCE_LENGTHS
+    ? median(reference.map(length => length.duration / length.distance)) : null;
+  const baselineStrokes = reference.length >= MIN_REFERENCE_LENGTHS
+    ? median(reference.map(length => length.strokes)) : null;
+  const overrides = session.lengthOverrides || {};
+
+  return lengths.map((length, index) => {
+    const sequence = Number.isInteger(length.sequence) ? length.sequence : index;
+    const choice = overrides[String(sequence)];
+    const isCandidate = active(length) && baselineTime !== null &&
+      Number.isFinite(length.strokes) && length.strokes >= 0 &&
+      length.duration / length.distance < baselineTime * FAST_TIME_RATIO &&
+      length.strokes < baselineStrokes * LOW_STROKE_RATIO;
+
+    // An explicitly kept length can override an automatic suspicion.
+    const excluded = choice === 'exclude' || (isCandidate && choice !== 'keep');
+    return {
+      excluded,
+      automatic: isCandidate,
+      manual: choice === 'exclude' ? 'exclude' : choice === 'keep' ? 'keep' : null,
+      reason: isCandidate ? 'Exceptionally fast with unusually few strokes' : null
+    };
+  });
+}
+
+/**
+ * Return totals suitable for a quality-filtered pace estimate.
+ * Only adjust a pool session when active lengths cover the reported FIT
+ * swimming distance and duration; otherwise retain the session totals.
+ */
+function paceTotals(session) {
+  const original = { distance: session.distance || 0, duration: session.duration || 0, excluded: 0 };
+  if (session.sport !== 'pool' || session.durationBasis !== 'active-lengths') return original;
+
+  const lengths = session.lengths || [];
+  const activeLengths = lengths.filter(active);
+  const fullDistance = activeLengths.reduce((sum, length) => sum + length.distance, 0);
+  const fullDuration = activeLengths.reduce((sum, length) => sum + length.duration, 0);
+  if (Math.abs(fullDistance - session.distance) > 0.5 ||
+      Math.abs(fullDuration - session.duration) > 0.5) return original;
+
+  const assessments = assessLengths(session);
+  const excluded = lengths.filter((length, index) => active(length) && assessments[index].excluded);
+  if (!excluded.length) return original;
+
+  const removedDistance = excluded.reduce((sum, length) => sum + length.distance, 0);
+  const removedDuration = excluded.reduce((sum, length) => sum + length.duration, 0);
+  return {
+    distance: Math.max(0, session.distance - removedDistance),
+    duration: Math.max(0, session.duration - removedDuration),
+    excluded: excluded.length
+  };
+}
+
+
+
+// ===== src/analytics/best-efforts.js =====
+/**
+ * Find the fastest continuous segments of exactly the requested distances.
+ *
+ * Input is an array of normalized SwimSession objects, not raw FIT messages.
+ * A rest marker, missing length, or invalid duration stops a segment.
+ */
+/** @param {string} unit - 'm' or 'yd'; units are never mixed. */
+function distanceBests(sessions, targets = [25, 50, 100, 200, 400, 800], unit = 'm') {
+  const results = [];
+
+  for (const target of targets) {
+    let best = null;
+    const targetMeters = unit === 'yd' ? target * 0.9144 : target;
+
+    for (const session of sessions) {
+      if (session.sport !== 'pool') continue;
+      if ((session.poolUnit || 'm') !== unit) continue;
+
+      const lengths = session.lengths || [];
+      const flags = assessLengths(session);
+      for (let start = 0; start < lengths.length; start++) {
+        const first = lengths[start];
+        if (!isActiveLength(first) || flags[start].excluded) continue;
+
+        let distance = 0;
+        let time = 0;
+
+        for (let end = start; end < lengths.length; end++) {
+          const length = lengths[end];
+          if (!isActiveLength(length) || flags[end].excluded) break;
+          if (end > start && !isConsecutive(lengths[end - 1], length)) break;
+
+          distance += length.distance;
+          time += length.duration;
+
+          // Allow a small FIT rounding error, not a yard/meter crossover.
+          if (Math.abs(distance - targetMeters) <= 0.05) {
+            if (!best || time < best.time) {
+              best = { distance: target, distanceMeters: targetMeters, unit, time, session };
+            }
+            break;
+          }
+          if (distance > targetMeters + 0.05) break;
+        }
+      }
+    }
+
+    results.push(best || { distance: target, distanceMeters: targetMeters, unit, time: null, session: null });
+  }
+  return results;
+}
+
+function isActiveLength(length) {
+  return length && !length.isRest && length.duration > 0 && length.distance > 0;
+}
+
+function isConsecutive(previous, current) {
+  if (Number.isInteger(previous.sequence) && Number.isInteger(current.sequence)) {
+    if (current.sequence !== previous.sequence + 1) return false;
+  }
+  if (Number.isInteger(previous.index) && Number.isInteger(current.index)) {
+    if (current.index !== previous.index + 1) return false;
+  }
+  return true;
+}
+
+
+
+// ===== src/analytics/metrics.js =====
+/** Pure calculations over normalized swimming sessions. No DOM or FIT parsing. */
+function pace(session) {
+  if (!session) return null;
+  const totals = paceTotals(session);
+  return totals.distance > 0 && totals.duration > 0
+    ? (totals.duration * 100) / totals.distance : null;
+}
+
+function summary(sessions) {
+  const distance = sessions.reduce((total, session) => total + session.distance, 0);
+  const duration = sessions.reduce((total, session) => total + session.duration, 0);
+  const qualityTotals = sessions.map(paceTotals);
+  const paceDistance = qualityTotals.reduce((total, item) => total + item.distance, 0);
+  const paceDuration = qualityTotals.reduce((total, item) => total + item.duration, 0);
+  const excluded = qualityTotals.reduce((total, item) => total + item.excluded, 0);
+  const activeLengths = sessions.flatMap(session => {
+    const flags = assessLengths(session);
+    return (session.lengths || []).filter((length, index) =>
+      !length.isRest && length.duration > 0 && !flags[index].excluded);
+  });
+  const lengthsWithStrokes = activeLengths.filter(length => Number.isFinite(length.strokes));
+
+  const meanStrokes = lengthsWithStrokes.length
+    ? lengthsWithStrokes.reduce((total, length) => total + length.strokes, 0) / lengthsWithStrokes.length
+    : null;
+
+  return {
+    sessions: sessions.length,
+    distance,
+    duration,
+    // Keep recorded distance and time intact. Only pace/stroke analytics are filtered.
+    pace: paceDistance > 0 ? paceDuration * 100 / paceDistance : null,
+    excluded,
+    stroke: meanStrokes,
+    activeLengths: activeLengths.length
+  };
+}
+
+function lengthDrift(session) {
+  const flags = assessLengths(session || { lengths: [] });
+  const lengths = (session?.lengths || [])
+    .filter((length, index) => !length.isRest && !flags[index].excluded &&
+      Number.isFinite(length.strokes));
+  if (lengths.length < 8) return null;
+
+  const count = Math.max(2, Math.floor(lengths.length / 4));
+  const average = entries => entries.reduce((total, length) => total + length.strokes, 0) / entries.length;
+  const first = average(lengths.slice(0, count));
+  const last = average(lengths.slice(-count));
+  return first > 0 ? 100 * (last - first) / first : null;
+}
+
+function weekVolumes(sessions) {
+  const totals = new Map();
+
+  for (const session of sessions) {
+    const date = new Date(session.date);
+    // Group by the user's local calendar week, not UTC midnight.
+    const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    monday.setDate(monday.getDate() - (monday.getDay() + 6) % 7);
+
+    const week = [monday.getFullYear(), String(monday.getMonth() + 1).padStart(2, '0'),
+      String(monday.getDate()).padStart(2, '0')].join('-');
+    totals.set(week, (totals.get(week) || 0) + session.distance);
+  }
+
+  return [...totals].sort(([a], [b]) => a.localeCompare(b)).map(([week, meters]) => ({
+    label: formatDate(`${week}T12:00:00`, { month: 'short', day: 'numeric' }),
+    value: meters / 1000
+  }));
+}
+
+// Formatting is presentation-only; kept separate from the numeric functions above.
+function formatNumber(value, decimals = 0) {
+  return Number.isFinite(value)
+    ? value.toLocaleString('en-US', { maximumFractionDigits: decimals })
+    : '—';
+}
+
+function formatSeconds(value) {
+  if (!Number.isFinite(value)) return '—';
+  const rounded = Math.round(value);
+  return `${Math.floor(rounded / 60)}:${String(rounded % 60).padStart(2, '0')}`;
+}
+
+function formatDuration(value) {
+  if (!Number.isFinite(value)) return '—';
+  const rounded = Math.round(value);
+  const hours = Math.floor(rounded / 3600);
+  const minutes = Math.floor((rounded % 3600) / 60);
+  const seconds = rounded % 60;
+  return `${hours ? `${hours}:` : ''}${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+function formatDate(value, options = { month: 'short', day: 'numeric', year: 'numeric' }) {
+  return new Date(value).toLocaleDateString('en-GB', options);
+}
+
+
+
+// ===== src/data/folder-source.js =====
+/**
+ * Read FIT files from browser File objects or a selected directory handle.
+ * No DOM manipulation, storage access, or global UI state in this module.
+ */
+const MAX_FILES = 300;
+const MAX_FILE_BYTES = 25 * 1024 * 1024;
+
+/**
+ * Enumerate a directory recursively using the standard File System Access API.
+ * @returns {Promise<Array<{handle: FileSystemFileHandle, path: string}>>}
+ */
+async function listFitEntries(directory, prefix = '') {
+  const files = [];
+
+  for await (const entry of directory.values()) {
+    const path = prefix ? `${prefix}/${entry.name}` : entry.name;
+
+    if (entry.kind === 'directory') {
+      files.push(...await listFitEntries(entry, path));
+    } else if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.fit')) {
+      files.push({ handle: entry, path });
+    }
+
+    if (files.length > MAX_FILES) {
+      throw new Error(`Folder contains over ${MAX_FILES} FIT files. Choose a smaller folder.`);
+    }
+  }
+
+  return files;
+}
+
+/**
+ * @param {Array<{file: File, path: string}>} entries
+ * @returns {Promise<{sessions: object[], failures: string[], ignored: number}>}
+ */
+async function parseFitFiles(entries) {
+  const candidates = entries.filter(entry => entry.file.name.toLowerCase().endsWith('.fit'));
+  if (candidates.length > MAX_FILES) {
+    throw new Error(`Selection contains over ${MAX_FILES} FIT files. Choose fewer files.`);
+  }
+  const sessions = [];
+  const failures = [];
+  const seen = new Set();
+  let ignored = 0;
+
+  for (const { file, path } of candidates) {
+    if (file.size > MAX_FILE_BYTES) {
+      failures.push(`${path}: exceeds 25 MB`);
+      continue;
+    }
+
+    try {
+      const buffer = await file.arrayBuffer();
+      // Hash only files without any FIT activity timestamp, for a stable ID.
+      // A per-file SHA-256 also allows future importers to identify duplicates.
+      const hashBytes = await crypto.subtle.digest('SHA-256', buffer);
+      const fileHash = [...new Uint8Array(hashBytes)]
+        .map(byte => byte.toString(16).padStart(2, '0')).join('');
+      const fallbackDate = Number.isFinite(file.lastModified) && file.lastModified > 0
+        ? new Date(file.lastModified).toISOString()
+        : '1989-12-31T00:00:00.000Z';
+      const session = parseFit(buffer, file.name, { fileHash, fallbackDate });
+      session.filename = path;
+      if (seen.has(session.id)) continue;
+      seen.add(session.id);
+      sessions.push(session);
+    } catch (error) {
+      const expected = /non-swimming activity|does not contain a swimming session/i;
+      if (expected.test(error.message)) ignored++;
+      else failures.push(`${path}: ${error.message}`);
+    }
+  }
+
+  return { sessions, failures, ignored };
+}
+
+async function readFitFolder(directory) {
+  const entries = await listFitEntries(directory);
+  const files = [];
+  for (const entry of entries) {
+    files.push({ file: await entry.handle.getFile(), path: entry.path });
+  }
+  return parseFitFiles(files);
+}
+
+function entriesFromFiles(files, useRelativePaths = false) {
+  return Array.from(files, file => ({
+    file,
+    path: useRelativePaths ? file.webkitRelativePath || file.name : file.name
+  }));
+}
+
+
+
+// ===== src/data/backup.js =====
+/** Validation before any write. Backups are untrusted JSON from the user's disk. */
+function validateBackup(value) {
+  if (!value || value.format !== 'myswimlab' || !Array.isArray(value.sessions)) {
+    throw new Error('Not a MySwimLab backup.');
+  }
+  const ids = new Set();
+  for (const [index, session] of value.sessions.entries()) {
+    const validDate = typeof session?.date === 'string' &&
+      Number.isFinite(Date.parse(session.date));
+    const valid = typeof session?.id === 'string' && session.id.length > 0 &&
+      validDate && Array.isArray(session.lengths) &&
+      Number.isFinite(session.distance) && session.distance >= 0 &&
+      Number.isFinite(session.duration) && session.duration >= 0 &&
+      typeof session.sport === 'string' &&
+      (session.notes === undefined || typeof session.notes === 'string') &&
+      (session.lengthOverrides === undefined || (session.lengthOverrides !== null &&
+        typeof session.lengthOverrides === 'object' && !Array.isArray(session.lengthOverrides) &&
+        Object.entries(session.lengthOverrides).every(([key, decision]) =>
+          /^(0|[1-9]\d*)$/.test(key) && ['keep', 'exclude'].includes(decision)))) &&
+      (session.equipment === undefined ||
+       Array.isArray(session.equipment) && session.equipment.every(e => typeof e === 'string'));
+    if (!valid) throw new Error(`Invalid session entry at position ${index + 1}.`);
+    if (ids.has(session.id)) throw new Error(`Duplicate session ID at position ${index + 1}.`);
+    ids.add(session.id);
+  }
+  return value.sessions;
+}
+
+
+
+// ===== src/data/storage.js =====
+/**
+ * Browser-only persistence. Imported FIT records are NOT a startup data source.
+ * A saved annotation stores the FULL normalized session object, including
+ * individual lengths, in IndexedDB. Cached sessions are never loaded as the
+ * app's startup history; they are consulted only for annotation recovery.
+ */
+const DATABASE_NAME = 'myswimlab-local-v1'; // Keep name for v0.3.1 compatibility
+const DATABASE_VERSION = 2;
+const SESSION_STORE = 'sessions';
+const CONFIG_STORE = 'configuration';
+
+function openDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
+
+    request.onupgradeneeded = () => {
+      const database = request.result;
+      if (!database.objectStoreNames.contains(SESSION_STORE)) {
+        database.createObjectStore(SESSION_STORE, { keyPath: 'id' });
+      }
+      if (!database.objectStoreNames.contains(CONFIG_STORE)) {
+        database.createObjectStore(CONFIG_STORE);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function transaction(storeName, mode, makeRequest) {
+  const database = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(storeName, mode);
+    const request = makeRequest(tx.objectStore(storeName));
+    let result;
+
+    request.onsuccess = () => { result = request.result; };
+    request.onerror = () => reject(request.error);
+    tx.oncomplete = () => { database.close(); resolve(result); };
+    tx.onerror = () => { database.close(); reject(tx.error); };
+    tx.onabort = () => { database.close(); reject(tx.error); };
+  });
+}
+
+const loadAnnotations = () => transaction(SESSION_STORE, 'readonly', store => store.getAll());
+const saveAnnotations = session => transaction(SESSION_STORE, 'readwrite', store => store.put(session));
+
+/** Commit a complete restore in one IndexedDB transaction (all or nothing). */
+async function saveAnnotationsBatch(sessions) {
+  const database = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(SESSION_STORE, 'readwrite');
+    const store = tx.objectStore(SESSION_STORE);
+    for (const session of sessions) store.put(session);
+    tx.oncomplete = () => { database.close(); resolve(); };
+    tx.onerror = () => { database.close(); reject(tx.error); };
+    tx.onabort = () => { database.close(); reject(tx.error); };
+  });
+}
+const deleteAnnotations = id => transaction(SESSION_STORE, 'readwrite', store => store.delete(id));
+const clearAnnotations = () => transaction(SESSION_STORE, 'readwrite', store => store.clear());
+
+const loadFolderHandle = () => transaction(CONFIG_STORE, 'readonly', store => store.get('fit-folder'));
+const saveFolderHandle = handle => transaction(CONFIG_STORE, 'readwrite', store => store.put(handle, 'fit-folder'));
+const forgetFolderHandle = () => transaction(CONFIG_STORE, 'readwrite', store => store.delete('fit-folder'));
+
+
+
+// ===== src/state.js =====
+/** The in-memory state is the only source of data displayed by the dashboard. */
+const state = {
+  sessions: [],               // Current folder contents, or explicitly imported files
+  sourceMode: 'folder',        // 'folder' | 'manual'
+  folderHandle: null,
+  folderName: '',
+  folderStatus: 'unselected',  // unselected | scanning | ready | permission | error | temporary
+  page: 'overview',
+  selectedSessionId: null,
+  period: 'all',
+  drafts: new Map()
+};
+
+function sortedSessions() {
+  return [...state.sessions].sort((a, b) => b.date.localeCompare(a.date));
+}
+
+function selectedSession() {
+  const sessions = sortedSessions();
+  return sessions.find(session => session.id === state.selectedSessionId) ?? sessions[0] ?? null;
+}
+
+/** Time windows are relative to the latest imported workout, not today's date. */
+function visibleSessions() {
+  const sessions = sortedSessions();
+  if (state.period === 'all' || sessions.length === 0) return sessions;
+
+  const lastDate = new Date(sessions[0].date).getTime();
+  const intervalMs = Number(state.period) * 86400000;
+  return sessions.filter(session => lastDate - new Date(session.date).getTime() < intervalMs);
+}
+
+function replaceSessions(sessions, sourceMode) {
+  state.sessions = sessions;
+  state.sourceMode = sourceMode;
+  state.selectedSessionId = null;
+  state.page = 'overview';
+  state.period = 'all';
+}
+
+
+
+// ===== src/ui/shared.js =====
+/** Basic HTML helpers, with escaping applied to untrusted FIT metadata. */
+const query = selector => document.querySelector(selector);
+
+function escapeHtml(value) {
+  const replacements = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  return String(value ?? '').replace(/[&<>"']/g, character => replacements[character]);
+}
+
+function tag(text, kind = '') {
+  return `<span class="tag ${escapeHtml(kind)}">${escapeHtml(text)}</span>`;
+}
+
+const icons = {
+  home: '⌂', sessions: '▤', trends: '▥', curve: '⌁', settings: '⚙'
+};
+
+function icon(name, size = 20) {
+  const paths = {
+    wave: '<path d="M2 9c4-4 6-4 10 0s6 4 10 0M2 15c4-4 6-4 10 0s6 4 10 0"/>',
+    upload: '<path d="M12 16V3m-5 5 5-5 5 5M4 16v4h16v-4"/>',
+    calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 2v6M17 2v6M3 11h18"/>',
+    chart: '<path d="M3 21V9m5 12V4m5 17v-9m5 9V2"/>'
+  };
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">${paths[name] || ''}</svg>`;
+}
+
+
+
+// ===== src/ui/charts.js =====
+/** Small SVG/HTML chart renderers. No charting library or server required. */
+function lineChart(data, { color = '#2766d6', fill = false, unit = '', label = '' } = {}) {
+  if (!data.length) return '<div class="empty-chart">Upload sessions to see a trend</div>';
+
+  const values = data.map(item => item.value).filter(Number.isFinite);
+  if (!values.length) return '<div class="empty-chart">No comparable data yet</div>';
+
+  const width = 640;
+  const height = 220;
+  const left = 52;
+  const right = 18;
+  const top = 18;
+  const bottom = 40;
+  const minimum = Math.min(...values);
+  const maximum = Math.max(...values);
+  const margin = Math.max((maximum - minimum) * 0.24, 0.5);
+  const lower = minimum - margin;
+  const upper = maximum + margin;
+
+  const x = index => left + index * (width - left - right) / Math.max(1, data.length - 1);
+  const y = value => top + (upper - value) * (height - top - bottom) / (upper - lower);
+  const points = data.map((item, index) => `${x(index)},${y(item.value)}`).join(' ');
+
+  const grid = [0, 1, 2, 3, 4].map(index => {
+    const gridY = top + index * (height - top - bottom) / 4;
+    const value = upper - index * (upper - lower) / 4;
+    const caption = unit === 'pace' ? formatSeconds(value) : formatNumber(value, 1);
+    return `
+      <line x1="${left}" y1="${gridY}" x2="${width - right}" y2="${gridY}" stroke="#e8eff5"/>
+      <text x="${left - 9}" y="${gridY + 4}" text-anchor="end" fill="#7890a7" font-size="11">${caption}</text>`;
+  }).join('');
+
+  const labels = data.map((item, index) => {
+    if (data.length > 8 && index % Math.ceil(data.length / 6) !== 0) return '';
+    return `<text x="${x(index)}" y="${height - 13}" text-anchor="middle" font-size="11" fill="#7d91a8">${escapeHtml(item.label)}</text>`;
+  }).join('');
+
+  const area = fill
+    ? `<polygon points="${left},${height - bottom} ${points} ${x(data.length - 1)},${height - bottom}" fill="${color}" opacity=".08"/>`
+    : '';
+
+  return `
+    <svg class="plot" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(label || 'Time series')}" preserveAspectRatio="none">
+      ${grid}
+      ${area}
+      <polyline points="${points}" stroke="${color}" stroke-width="3" fill="none" stroke-linejoin="round"/>
+      ${data.map((item, index) => `<circle cx="${x(index)}" cy="${y(item.value)}" r="4" fill="${color}" stroke="white" stroke-width="1.7"/>`).join('')}
+      ${labels}
+    </svg>`;
+}
+
+function barChart(data) {
+  if (!data.length) return '<div class="empty-chart">Upload sessions to see a trend</div>';
+  const maximum = Math.max(1, ...data.map(item => item.value));
+
+  return `<div class="bars">${data.map(item => `
+    <div class="barcol">
+      <div class="bar-track">
+        <div class="bar-fill" style="height:${Math.max(3, item.value / maximum * 100)}%" title="${item.value.toFixed(2)} km"></div>
+      </div>
+      <small>${escapeHtml(item.label)}</small>
+    </div>`).join('')}</div>`;
+}
+
+
+
+// ===== src/ui/components.js =====
+/** Reusable view fragments. Each accepts data and returns an HTML string. */
+function metric(title, valueHtml, description, iconName) {
+  return `
+    <article class="metric">
+      <div class="metric-top">
+        <span>${escapeHtml(title)}</span>
+        <span class="metric-icon">${icon(iconName)}</span>
+      </div>
+      <strong>${valueHtml}</strong>
+      <p>${escapeHtml(description)}</p>
+    </article>`;
+}
+
+function metricCards(sessions) {
+  const total = summary(sessions);
+  return `
+    <div class="metrics">
+      ${metric('Total distance', `${formatNumber(total.distance / 1000, 2)} <small>km</small>`, 'Across selected sessions', 'wave')}
+      ${metric('Sessions', formatNumber(total.sessions), 'Swimming activities from your chosen files', 'calendar')}
+      ${metric(total.excluded ? 'Filtered pace' : 'Average pace', `${formatSeconds(total.pace)} <small>/100m</small>`, total.excluded ? `${total.excluded} suspect ${total.excluded === 1 ? 'length' : 'lengths'} excluded · totals unchanged` : 'Moving time, distance weighted', 'chart')}
+      ${metric('Strokes / length', formatNumber(total.stroke, 1), 'Only available pool lengths', 'wave')}
+      ${metric('Time swimming', formatDuration(total.duration), 'Moving time', 'calendar')}
+    </div>`;
+}
+
+function emptyState(title, message) {
+  return `
+    <div class="empty">
+      <div class="empty-symbol">${icon('wave', 34)}</div>
+      <h3>${escapeHtml(title)}</h3>
+      <p>${escapeHtml(message)}</p>
+      <div class="buttonstack">
+        <button class="primary" data-folder-select="true">${icon('upload', 17)} Choose FIT folder</button>
+        <button class="secondary" data-upload="true">Import individual FIT files</button>
+      </div>
+    </div>`;
+}
+
+function recentTable(sessions, compact = false) {
+  if (!sessions.length) {
+    return emptyState('No sessions yet', 'Import Garmin FIT activities to see your training history.');
+  }
+
+  const visible = compact ? sessions.slice(0, 6) : sessions;
+  const rows = visible.map(session => `
+    <tr data-select="${escapeHtml(session.id)}">
+      <td>${formatDate(session.date)}</td>
+      <td class="strong"><button class="session-link" data-select="${escapeHtml(session.id)}">${escapeHtml(session.title)}</button></td>
+      <td>${formatNumber(session.distance)} m</td>
+      <td>${formatDuration(session.duration)}</td>
+      <td>${formatSeconds(pace(session))}</td>
+      <td>${formatNumber(summary([session]).stroke, 1)}</td>
+      <td>${tag(session.source, 'real')}</td>
+      <td class="arrow">›</td>
+    </tr>`).join('');
+
+  return `
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th>Date</th><th>Workout</th><th>Distance</th><th>Moving time</th>
+          <th>Pace /100m</th><th>Stroke count</th><th>Source</th><th></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function lengthTable(session) {
+  const lengths = session.lengths || [];
+  if (!lengths.length) return '<div class="hint">No individual pool lengths in this activity.</div>';
+
+  const flags = assessLengths(session);
+  const rows = lengths.map((length, index) => {
+    const flag = flags[index];
+    const sequence = Number.isInteger(length.sequence) ? length.sequence : index;
+    const status = flag.manual === 'keep' ? 'Kept manually'
+      : flag.manual === 'exclude' ? 'Excluded manually'
+      : flag.excluded ? 'Suspected artifact' : '';
+    const action = length.isRest ? '' : flag.manual
+      ? `<button class="quality-action" data-quality-sequence="${sequence}" data-quality-decision="reset"
+          aria-label="Reset quality decision for record ${index + 1}">Reset</button>`
+      : flag.excluded
+        ? `<button class="quality-action" data-quality-sequence="${sequence}" data-quality-decision="keep"
+            aria-label="Keep record ${index + 1} in analytics">Keep</button>`
+        : `<button class="quality-action" data-quality-sequence="${sequence}" data-quality-decision="exclude"
+            aria-label="Exclude record ${index + 1} from analytics">Exclude</button>`;
+    return `
+      <tr id="length-${index}" class="${flag.excluded ? 'excluded-length' : ''}">
+        <td>${index + 1}</td>
+        <td>${length.isRest ? tag('Rest') : tag('Swim', 'real')}</td>
+        <td>${formatSeconds(length.duration)}</td>
+        <td>${length.isRest || !length.distance ? '—' : formatSeconds(length.duration * 100 / length.distance)}</td>
+        <td>${formatNumber(length.strokes)}</td>
+        <td>${formatNumber(length.cadence)}</td>
+        <td><span class="quality-status" title="${escapeHtml(flag.reason || '')}">${status}</span> ${action}</td>
+      </tr>`;
+  }).join('');
+
+  return `
+    <div class="length-scroll">
+      <table>
+        <thead><tr><th>#</th><th>Type</th><th>Duration</th><th>Pace</th><th>Strokes</th><th>Cadence</th><th>Quality control</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function sessionInsight(sessions) {
+  if (sessions.length < 2) return 'Add more sessions with valid distance and duration to explore pace changes.';
+
+  const ordered = [...sessions].sort((a, b) => a.date.localeCompare(b.date));
+  const first = ordered[0];
+  const last = ordered[ordered.length - 1];
+  const firstPace = pace(first);
+  const lastPace = pace(last);
+  if (!firstPace || !lastPace) return 'Add more sessions with valid distance and duration to explore pace changes.';
+
+  const difference = lastPace - firstPace;
+  const change = Math.abs(difference);
+  const headline = change < 1 ? 'Session-average pace is broadly stable.'
+    : difference < 0 ? `Latest session average is ${formatSeconds(change)} /100m faster.`
+    : `Latest session average is ${formatSeconds(change)} /100m slower.`;
+
+  const recent = ordered.slice(-3);
+  const recentDistances = recent.map(session => session.distance);
+  const variability = Math.max(...recentDistances) - Math.min(...recentDistances);
+  const context = variability < 200
+    ? 'Recent session distances are similar, making volume easier to compare.'
+    : 'Workout distances vary: compare matching repetitions rather than treating average pace as a fitness score.';
+
+  return `
+    <b>${headline}</b>
+    <p>Comparing ${formatDate(first.date, { month: 'short', day: 'numeric' })} with
+      ${formatDate(last.date, { month: 'short', day: 'numeric' })}.
+      You have ${sessions.length} sessions and ${formatNumber(summary(sessions).distance / 1000, 2)} km in this view.</p>
+    <p>${context}</p>
+    <p class="muted">Intensity, stroke and equipment are not normalized. This is an observation, not a diagnosis.</p>`;
+}
+
+
+
+// ===== src/ui/overview.js =====
+/** Main dashboard, built from reusable view fragments. */
+function emptyMessage() {
+  switch (state.folderStatus) {
+    case 'permission':
+      return 'The selected folder needs permission again. Click Reconnect to authorize access.';
+    case 'error':
+      return 'The selected folder could not be read. Change the folder or try again.';
+    case 'scanning':
+      return 'Scanning the selected folder for Garmin swimming activities…';
+    case 'ready':
+    case 'temporary':
+      return 'No swimming FIT files were found in this folder. Add a FIT file and choose Refresh.';
+    default:
+      return 'Choose a folder containing Garmin FIT swimming activities. An empty folder shows no sessions.';
+  }
+}
+
+function bestEffortsPanel(sessions) {
+  const units = [...new Set(sessions.filter(session => session.sport === 'pool')
+    .map(session => session.poolUnit || 'm'))];
+  const groups = units.length ? units : ['m'];
+  const tiles = groups.map(unit => {
+    const efforts = distanceBests(sessions, [25, 50, 100, 200, 400, 800], unit);
+    return `<div class="effort-group">
+      ${groups.length > 1 ? `<h3>${unit === 'yd' ? 'Yard pool' : 'Meter pool'}</h3>` : ''}
+      <div class="bests">${efforts.map(effort => `
+        <div class="besttile">
+          <span>${effort.distance} ${unit}</span>
+          <strong>${formatSeconds(effort.time)}</strong>
+          <small>${effort.session
+            ? `<span class="best-pace">${formatSeconds(effort.time * 100 / effort.distance)}/100${unit}</span> · ${formatDate(effort.session.date, { month: 'short', day: 'numeric' })}`
+            : 'No continuous segment recorded'}</small>
+        </div>`).join('')}</div></div>`;
+  }).join('');
+  return `<section class="panel">
+    <div class="panelhead">
+      <div><h2>Best recorded efforts</h2><p>Continuous pool segments · suspect lengths excluded · yards/meters separate</p></div>
+      <button class="subtle" data-page="performance">Detailed curve →</button>
+    </div>${tiles}
+  </section>`;
+}
+
+function overview(sessions) {
+  if (!sessions.length) {
+    return `
+      <div class="pagehead"><div>
+        <h1>Swimming overview</h1>
+        <p>Your swimming history, directly from FIT files.</p>
+      </div></div>
+      ${emptyState('No swimming sessions', emptyMessage())}`;
+  }
+
+  const chronological = [...sessions].reverse();
+  const recent = [...sessions].sort((a, b) => b.date.localeCompare(a.date));
+  const volumes = weekVolumes(sessions);
+  const paceTrend = chronological.map(session => ({
+    label: formatDate(session.date, { month: 'short', day: 'numeric' }),
+    value: pace(session)
+  })).filter(point => Number.isFinite(point.value));
+  const strokeTrend = chronological.map(session => ({
+    label: formatDate(session.date, { month: 'short', day: 'numeric' }),
+    value: summary([session]).stroke
+  })).filter(point => Number.isFinite(point.value));
+  const latest = recent[0];
+
+  return `
+    <div class="pagehead">
+      <div>
+        <div class="eyebrow">SWIMMING ANALYTICS / PERSONAL TRAINING HISTORY</div>
+        <h1>Swimming overview</h1>
+        <p>Understand your swimming, not just your distance.</p>
+      </div>
+      ${tag(`${sessions.length} SWIMMING ACTIVITIES`, 'real')}
+    </div>
+    ${metricCards(sessions)}
+
+    <div class="twocol leadcharts">
+      <section class="panel">
+        <div class="panelhead"><div><h2>Training volume</h2><p>Weekly swimming distance · kilometers</p></div><span class="panel-icon">${icon('chart', 19)}</span></div>
+        ${barChart(volumes)}
+      </section>
+      <section class="panel">
+        <div class="panelhead"><div><h2>Average pace progression</h2><p>Session-average moving pace · suspect lengths excluded · lower is faster</p></div><span class="panel-icon">${icon('wave', 19)}</span></div>
+        ${lineChart(paceTrend, { unit: 'pace', color: '#168fa6', label: 'Average pace per session' })}
+      </section>
+    </div>
+
+    <div class="twocol unequal">
+      ${bestEffortsPanel(sessions)}
+      <section class="panel insight">
+        <div class="panelhead"><div><h2>What your data says</h2><p>Descriptive findings from your imported history</p></div><span class="spark">✦</span></div>
+        <div class="insight-body">${sessionInsight(sessions)}</div>
+        <button class="subtle insight-link" data-page="trends">Explore training trends →</button>
+      </section>
+    </div>
+
+    <div class="twocol lowercharts">
+      <section class="panel">
+        <div class="panelhead"><div><h2>Stroke count across sessions</h2><p>Mean strokes per active pool length · unadjusted</p></div><span class="panel-icon">${icon('wave', 19)}</span></div>
+        ${lineChart(strokeTrend, { color: '#139f9c', label: 'Mean strokes per pool length' })}
+      </section>
+      <section class="panel nextstep">
+        <div class="panelhead"><div><h2>Zoom into a workout</h2><p>Individual length data is where swimming becomes interesting</p></div></div>
+        <div class="feature-session">
+          <div>
+            <span class="eyebrow">MOST RECENT SWIM</span>
+            <h3>${escapeHtml(latest.title)}</h3>
+            <p>${formatDate(latest.date)} · ${formatNumber(latest.distance)} m · ${formatSeconds(pace(latest))}/100m</p>
+          </div>
+          <button class="primary" data-open-session="${escapeHtml(latest.id)}">Inspect lengths →</button>
+        </div>
+        <div class="feature-foot">Examine length-by-length pace, stroke counts, breaks and workout annotations.</div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <div class="panelhead"><div><h2>Recent sessions</h2><p>Imported activities · select a row to explore</p></div><button class="subtle" data-page="sessions">All sessions →</button></div>
+      ${recentTable(recent, true)}
+    </section>`;
+}
+
+
+
+// ===== src/ui/session-detail.js =====
+/** Inspect one session, with optional browser-local annotations. */
+function sessionPage() {
+  const session = selectedSession();
+  if (!session) {
+    return `<div class="pagehead"><h1>Session analysis</h1></div>
+      ${emptyState('No swim selected', 'Import a FIT file to see an analysis.')}`;
+  }
+
+  const draft = state.drafts.get(session.id);
+  const noteText = draft?.notes ?? session.notes ?? '';
+  const equipmentText = draft?.equipment ?? (session.equipment || []).join(', ');
+  const lengths = session.lengths || [];
+  const quality = assessLengths(session);
+  const excluded = quality.map((flag, index) => flag.excluded ? index : -1).filter(index => index >= 0);
+  const active = lengths.filter((length, index) => !length.isRest && length.duration > 0 && length.distance > 0 && !quality[index].excluded);
+  const totals = paceTotals(session);
+  const paceByLength = active.map((length, index) => ({
+    label: String(index + 1), value: length.duration * 100 / length.distance
+  }));
+  const strokesByLength = active.filter(length => Number.isFinite(length.strokes))
+    .map((length, index) => ({ label: String(index + 1), value: length.strokes }));
+  const drift = lengthDrift(session);
+  const correctedPace = totals.excluded > 0;
+  const swimType = session.sport === 'pool' ? `Pool ${formatNumber(session.poolUnit === 'yd' ? session.poolMeters / 0.9144 : session.poolMeters, 2)}${session.poolUnit || 'm'}` : 'Open water';
+  const hasRestExcluded = session.sport === 'pool' && session.durationBasis !== 'timer';
+  const movingTimeDescription = hasRestExcluded
+    ? session.restDuration > 0
+      ? `Excludes ${formatDuration(session.restDuration)} recorded rest`
+      : 'Active lengths only'
+    : 'FIT timer time (rest may be included)';
+  const removeButton = state.sourceMode === 'manual'
+    ? `<button class="danger-lite" data-delete="${escapeHtml(session.id)}">Remove session</button>`
+    : '';
+
+  return `
+    <div class="pagehead">
+      <div>
+        <div class="breadcrumb">SESSIONS / ${formatDate(session.date)}</div>
+        <h1>${escapeHtml(session.title)}</h1>
+        <p>${formatDate(session.date)} · ${swimType} · ${escapeHtml(session.source)} data</p>
+      </div>
+      <div class="pageactions">
+        ${removeButton}
+        <button class="subtle" data-page="sessions">All sessions</button>
+      </div>
+    </div>
+
+    <div class="metrics four">
+      ${metric('Distance', `${formatNumber(session.distance)} <small>m</small>`, 'Recorded or reconstructed', 'wave')}
+      ${metric(hasRestExcluded ? 'Swimming time' : 'Timer time', formatDuration(session.duration), movingTimeDescription, 'calendar')}
+      ${metric(correctedPace ? 'Filtered pace' : 'Average pace', `${formatSeconds(pace(session))} <small>/100m</small>`, correctedPace ? `${totals.excluded} suspect ${totals.excluded === 1 ? 'length' : 'lengths'} omitted` : 'Moving pace', 'chart')}
+      ${metric('Length drift', drift === null ? '—' : `${drift >= 0 ? '+' : ''}${drift.toFixed(1)}%`, 'Stroke count: last vs first quarter', 'wave')}
+    </div>
+
+    ${hasRestExcluded && session.restDuration > 0 && Number.isFinite(session.timerDuration) ? `
+      <p class="fineprint">Swimming ${formatDuration(session.duration)} + recorded rest ${formatDuration(session.restDuration)} = FIT timer ${formatDuration(session.timerDuration)}.</p>
+    ` : ''}
+
+    ${excluded.length ? `
+      <section class="panel quality-panel" aria-label="Swimming length data quality">
+        <b>Data quality: ${excluded.length} ${excluded.length === 1 ? 'length' : 'lengths'} excluded from pace analytics and best efforts</b>
+        <p>Original FIT distance, swimming time, and rest records are unchanged. The app flags only very fast lengths with unusually few strokes. You can override each decision.</p>
+        <p>${excluded.map(index => `<button class="quality-jump" data-jump-length="${index}">Review record #${index + 1} (${formatSeconds(lengths[index].duration)}, ${formatNumber(lengths[index].strokes)} strokes)</button>`).join(' ')}</p>
+      </section>
+    ` : ''}
+
+    ${session.sport === 'open-water' ? `
+      <section class="panel info"><b>Open-water session</b>
+        <p>Distance and time are supported. Length-by-length charts apply only to pool swimming.</p>
+      </section>` : ''}
+
+    <div class="twocol">
+      <section class="panel">
+        <div class="panelhead"><div><h2>Pace by length</h2><p>Seconds per 100 m · excluded lengths omitted</p></div></div>
+        ${lineChart(paceByLength, { unit: 'pace', label: 'Pace per length' })}
+      </section>
+      <section class="panel">
+        <div class="panelhead"><div><h2>Strokes per length</h2><p>As counted by the watch · excluded lengths omitted</p></div></div>
+        ${lineChart(strokesByLength, { color: '#0b9a9a', label: 'Strokes per length' })}
+      </section>
+    </div>
+
+    <div class="twocol unequal">
+      <section class="panel">
+        <div class="panelhead"><div><h2>Recorded lengths</h2><p>Rest markers appear as separate entries</p></div><span class="muted">${lengths.length} records</span></div>
+        ${lengthTable(session)}
+      </section>
+      <section class="panel">
+        <div class="panelhead"><div><h2>Session notes</h2><p>Add details your watch could not record</p></div></div>
+        <label class="fieldlabel" for="notes">Workout structure, technique, effort</label>
+        <textarea id="notes" rows="6" placeholder="e.g., 5 × 200 with 10 s rest">${escapeHtml(noteText)}</textarea>
+        <label class="fieldlabel" for="equipment">Equipment used (comma-separated)</label>
+        <input id="equipment" type="text" value="${escapeHtml(equipmentText)}" placeholder="Paddles, Pull buoy..."/>
+        <button class="primary save" data-save="${escapeHtml(session.id)}">Save annotations</button>
+        <p class="fineprint">Annotations stay in this browser and are included in JSON backup.</p>
+      </section>
+    </div>`;
+}
+
+
+
+// ===== src/ui/sessions-list.js =====
+/** Browsable session index, separate from the analysis of an individual swim. */
+function sessionsPage(sessions) {
+  return `
+    <div class="pagehead"><div>
+      <h1>All sessions</h1>
+      <p>${sessions.length} swimming activity/activities in the selected time period.</p>
+    </div></div>
+    <section class="panel">
+      <div class="panelhead"><div><h2>Swimming history</h2>
+        <p>Select a session to inspect lengths, pace, and annotations.</p>
+      </div></div>
+      ${recentTable(sessions)}
+    </section>`;
+}
+
+
+
+// ===== src/ui/other-pages.js =====
+/** Secondary views: performance, trends, and local-data settings. */
+function effortGroup(sessions, unit) {
+  const targets = [25, 50, 100, 200, 400, 800, 1500];
+  const efforts = distanceBests(sessions, targets, unit);
+  const curve = efforts.filter(effort => effort.time !== null).map(effort => ({
+    label: `${effort.distance}${unit}`,
+    value: effort.time * 100 / effort.distance
+  }));
+  const rows = efforts.map(effort => `
+    <tr>
+      <td>${effort.distance} ${unit}</td>
+      <td class="strong">${formatSeconds(effort.time)}</td>
+      <td>${effort.time !== null ? formatSeconds(effort.time * 100 / effort.distance) : '—'}</td>
+      <td>${effort.session ? formatDate(effort.session.date) : '—'}</td>
+    </tr>`).join('');
+  return `
+    <section class="panel">
+      <div class="panelhead"><div><h2>Best pace — ${unit === 'yd' ? 'yards' : 'meters'}</h2>
+        <p>Seconds / 100${unit} · lower is faster</p></div></div>
+      ${lineChart(curve, { unit: 'pace', label: `Best pace per 100${unit}` })}
+      <div class="tablewrap"><table>
+        <thead><tr><th>Distance</th><th>Best time</th><th>Pace /100${unit}</th><th>Session</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </section>`;
+}
+
+function performancePage(sessions) {
+  const units = [...new Set(sessions.filter(s => s.sport === 'pool')
+    .map(s => s.poolUnit || 'm'))];
+  const shownUnits = units.length ? units : ['m'];
+  return `
+    <div class="pagehead"><div><h1>Performance curve</h1>
+      <p>Best continuous training efforts; suspect lengths excluded; meters and yards kept separate.</p>
+    </div></div>
+    ${shownUnits.map(unit => effortGroup(sessions, unit)).join('')}
+    <p class="fineprint">Different strokes, drills or equipment may not be comparable. Yard pace is /100yd.</p>`;
+}
+
+function trendsPage(sessions) {
+  const ordered = [...sessions].reverse();
+  const distanceTrend = ordered.map(session => ({
+    label: formatDate(session.date, { month: 'short', day: 'numeric' }),
+    value: session.distance / 1000
+  }));
+  const strokeTrend = ordered.map(session => ({
+    label: formatDate(session.date, { month: 'short', day: 'numeric' }),
+    value: summary([session]).stroke
+  })).filter(point => Number.isFinite(point.value));
+
+  return `
+    <div class="pagehead"><div><h1>Training trends</h1><p>Track changes across sessions, with context.</p></div></div>
+    ${metricCards(sessions)}
+    <div class="twocol">
+      <section class="panel">
+        <div class="panelhead"><div><h2>Session distance</h2><p>Distance in km</p></div></div>
+        ${lineChart(distanceTrend, { unit: 'km', fill: true })}
+      </section>
+      <section class="panel">
+        <div class="panelhead"><div><h2>Stroke-count trend</h2><p>Unadjusted mean across recorded active lengths</p></div></div>
+        ${lineChart(strokeTrend, { color: '#0a9b9a' })}
+      </section>
+    </div>
+    <div class="panel info"><b>Interpretation caution</b>
+      <p>Stroke counts can change with pace, stroke mix, pool length, drills, equipment or measurement error. Future matched-set analysis will reduce these confounders.</p>
+    </div>`;
+}
+
+function settingsPage() {
+  const folderName = state.folderName ? escapeHtml(state.folderName) : 'No folder selected';
+  const folderActions = state.folderHandle ? `
+    <button class="secondary" data-folder-refresh="true">Refresh folder</button>
+    <button class="danger-lite" data-folder-forget="true">Forget folder</button>` : '';
+
+  return `
+    <div class="pagehead"><div><h1>Data & settings</h1><p>Local FIT analysis without cloud synchronization.</p></div></div>
+    <div class="twocol">
+      <section class="panel">
+        <h2>FIT source folder</h2>
+        <p class="muted">${folderName}</p>
+        <p class="muted">The folder is scanned at startup when permission is available. Use Refresh to detect new or removed FIT files. Continuous filesystem watching is not enabled.</p>
+        <div class="buttonstack">
+          <button class="primary" data-folder-select="true">Choose / change folder</button>
+          ${folderActions}
+        </div>
+      </section>
+      <section class="panel">
+        <h2>Privacy & backup</h2>
+        <p class="muted">FIT files are processed locally, not uploaded. The folder handle remains in browser storage. Saving notes, length-quality decisions, or restoring a backup also stores a full copy of each affected session (including length data) in IndexedDB.</p>
+        <div class="buttonstack">
+          <button class="secondary" data-export="true">Export JSON backup</button>
+          <button class="secondary" data-restore="true">Restore JSON backup</button>
+          <button class="danger-lite" data-clear="true">Clear saved annotations and length decisions</button>
+        </div>
+        <p class="fineprint">Forgetting a folder or clearing annotations never deletes FIT files. Permissions may expire; private windows do not retain settings.</p>
+      </section>
+    </div>`;
+}
+
+
+
+// ===== src/ui/layout.js =====
+/** Fixed application frame; each navigation action renders into #main. */
+const NAVIGATION = [
+  ['overview', 'Overview', 'home'],
+  ['sessions', 'Sessions', 'sessions'],
+  ['trends', 'Trends', 'trends'],
+  ['performance', 'Performance curve', 'curve'],
+  ['settings', 'Data & settings', 'settings']
+];
+
+function folderStatus() {
+  if (state.sourceMode === 'manual') {
+    return `${state.sessions.length} manually imported FIT file(s)`;
+  }
+  switch (state.folderStatus) {
+    case 'permission': return `Reconnect: ${state.folderName}`;
+    case 'scanning': return `Scanning: ${state.folderName}`;
+    case 'ready':
+    case 'temporary': return `Folder: ${state.folderName}`;
+    case 'error': return `Folder unavailable: ${state.folderName}`;
+    default: return 'No FIT folder selected';
+  }
+}
+
+function layout() {
+  const status = escapeHtml(folderStatus());
+  const navigation = NAVIGATION.map(([page, label, symbol]) => `
+    <button data-page="${page}" class="navitem ${state.page === page ? 'active' : ''}">
+      <span class="navicon">${icons[symbol]}</span>${label}
+    </button>`).join('');
+  const periods = [
+    ['7', '7D'], ['28', '4W'], ['84', '12W'], ['365', '1Y'], ['all', 'All']
+  ].map(([period, label]) => `
+    <button data-period="${period}" class="${state.period === period ? 'chosen' : ''}">${label}</button>`).join('');
+
+  return `
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="logo"><div class="mark">${icon('wave', 31)}</div><span>MySwimLab</span></div>
+        <div class="nav">${navigation}</div>
+        <div class="asidefoot">
+          <div class="privacy">◉ &nbsp; Local-first beta</div>
+          <p>No synthetic training history. The selected FIT folder or manual import determines the displayed sessions.</p>
+          <button class="asidelink" data-page="settings">Data privacy & backup ↗</button>
+        </div>
+      </aside>
+      <div class="workspace">
+        <header class="topbar">
+          <div class="mobilelogo">${icon('wave', 24)} MySwimLab</div>
+          <div class="periods">${periods}</div>
+          <div class="topactions">
+            <span class="folder-source" title="${status}">${status}</span>
+            <button class="secondary" data-folder-select="true">${state.folderName ? 'Change folder' : 'Choose FIT folder'}</button>
+            ${state.folderHandle ? `<button class="secondary" data-folder-refresh="true">${state.folderStatus === 'permission' ? 'Reconnect' : 'Refresh'}</button>` : ''}
+            <button class="primary upload" data-upload="true">${icon('upload', 17)} <span>Import FIT</span></button>
+          </div>
+        </header>
+        <main id="main"></main>
+        <footer>MySwimLab v0.4.3 review · Experimental analytics · <a href="https://developer.garmin.com/fit/" target="_blank" rel="noopener">About FIT</a></footer>
+      </div>
+    </div>
+    <input id="fileInput" type="file" accept=".fit,application/octet-stream" multiple hidden/>
+    <input id="folderInput" type="file" webkitdirectory multiple hidden/>
+    <input id="backupInput" type="file" accept="application/json,.json" hidden/>
+    <div id="toast" role="status" aria-live="polite"></div>`;
+}
+
+
+
+// ===== src/ui/render.js =====
+/** UI rendering and small browser utilities. No FIT parsing in this module. */
+function render() {
+  const previousFocus = document.activeElement;
+  const focusKey = ['page', 'period'].find(key => previousFocus?.dataset?.[key]);
+  const focusValue = focusKey ? previousFocus.dataset[focusKey] : null;
+  const list = visibleSessions();
+  query('#app').innerHTML = layout();
+
+  const pages = {
+    overview: () => overview(list),
+    sessions: () => sessionsPage(list),
+    'session-detail': () => sessionPage(),
+    performance: () => performancePage(list),
+    trends: () => trendsPage(list),
+    settings: () => settingsPage()
+  };
+
+  query('#main').innerHTML = (pages[state.page] || pages.overview)();
+  document.title = `${state.page[0].toUpperCase() + state.page.slice(1)} · MySwimLab`;
+  if (focusKey && focusValue) {
+    const replacement = [...document.querySelectorAll(`[data-${focusKey}]`)]
+      .find(item => item.dataset[focusKey] === focusValue);
+    replacement?.focus({ preventScroll: true });
+  }
+}
+
+let toastTimer = null;
+
+function toast(message) {
+  const element = query('#toast');
+  if (!element) return;
+  if (toastTimer !== null) clearTimeout(toastTimer);
+  element.textContent = message;
+  element.classList.add('shown');
+  toastTimer = setTimeout(() => {
+    element.classList.remove('shown');
+    toastTimer = null;
+  }, 4200);
+}
+
+function downloadJson(filename, value) {
+  const blob = new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+}
+
+
+
+// ===== src/main.js =====
+/**
+ * Application controller: connect browser events, file sources, state, and views.
+ *
+ * This is intentionally the only module that coordinates all four layers.
+ * FIT decoder, analytics, and folder reader never import anything from the UI.
+ */
+let scanGeneration = 0;
+
+function notifyFailures(failures) {
+  if (failures.length) {
+    console.warn('FIT files skipped:', failures);
+    alert(`Some files could not be read:\n${failures.join('\n')}`);
+  }
+}
+
+async function restoreAnnotations(sessions) {
+  try {
+    const stored = new Map((await loadAnnotations()).map(session => [session.id, session]));
+    for (const session of sessions) {
+      const old = stored.get(session.id);
+      if (old) {
+        session.notes = old.notes || '';
+        session.equipment = old.equipment || [];
+        session.lengthOverrides = old.lengthOverrides || {};
+      }
+    }
+  } catch (error) {
+    console.warn('Saved annotations unavailable:', error);
+  }
+}
+
+/** Each rescan fully replaces visible sessions; an empty folder clears the UI. */
+async function scanFolder(handle = state.folderHandle) {
+  if (!handle) return;
+  // Guard is established BEFORE awaiting permission or directory reads.
+  const generation = ++scanGeneration;
+  if (typeof handle.queryPermission === 'function') {
+    const permission = await handle.queryPermission({ mode: 'read' });
+    if (generation !== scanGeneration) return;
+    if (permission !== 'granted') {
+      replaceSessions([], 'folder');
+      state.folderStatus = 'permission';
+      render();
+      return;
+    }
+  }
+
+  replaceSessions([], 'folder');
+  state.folderStatus = 'scanning';
+  render();
+
+  try {
+    const { sessions, ignored, failures } = await readFitFolder(handle);
+    await restoreAnnotations(sessions);
+
+    if (generation !== scanGeneration) return; // Ignore a stale background completion.
+    replaceSessions(sessions, 'folder');
+    state.folderStatus = 'ready';
+    render();
+    toast(`Folder scanned: ${sessions.length} swimming session(s)${ignored ? `, ${ignored} non-swimming file(s) ignored` : ''}${failures.length ? `, ${failures.length} unreadable file(s)` : ''}.`);
+    if (failures.length) console.warn('FIT files skipped:', failures);
+  } catch (error) {
+    if (generation !== scanGeneration) return;
+    replaceSessions([], 'folder');
+    state.folderStatus = 'error';
+    render();
+    alert(`Unable to read the chosen FIT folder: ${error.message}`);
+  }
+}
+
+async function chooseFolder() {
+  if (typeof window.showDirectoryPicker !== 'function') {
+    // Browser fallback: user must reselect the folder next time.
+    query('#folderInput').click();
+    return;
+  }
+
+  try {
+    // Picker must be requested directly from a real user click.
+    const handle = await window.showDirectoryPicker({ id: 'myswimlab-fit-folder', mode: 'read' });
+    state.folderHandle = handle;
+    state.folderName = handle.name;
+    try {
+      await saveFolderHandle(handle);
+    } catch (error) {
+      console.warn('Folder cannot be remembered:', error);
+      toast('Folder can be read, but you may need to select it next time.');
+    }
+    await scanFolder(handle);
+  } catch (error) {
+    if (error.name !== 'AbortError') alert(`Could not choose FIT folder: ${error.message}`);
+  }
+}
+
+async function refreshFolder() {
+  const handle = state.folderHandle;
+  if (!handle) return chooseFolder();
+  const generation = ++scanGeneration;
+
+  try {
+    const permission = typeof handle.queryPermission === 'function'
+      ? await handle.queryPermission({ mode: 'read' }) : 'granted';
+    if (permission !== 'granted') {
+      const renewed = typeof handle.requestPermission === 'function'
+        ? await handle.requestPermission({ mode: 'read' }) : 'denied';
+      if (generation !== scanGeneration) return;
+      if (renewed !== 'granted') {
+        replaceSessions([], 'folder');
+        state.folderStatus = 'permission';
+        render();
+        return;
+      }
+    }
+    if (generation !== scanGeneration) return;
+    await scanFolder(handle);
+  } catch (error) {
+    if (generation === scanGeneration) alert(`Cannot access FIT folder: ${error.message}`);
+  }
+}
+
+async function forgetFolder() {
+  try {
+    await forgetFolderHandle();
+  } catch (error) {
+    console.warn('Could not forget stored folder:', error);
+  }
+  scanGeneration++;
+  state.folderHandle = null;
+  state.folderName = '';
+  state.folderStatus = 'unselected';
+  replaceSessions([], 'folder');
+  render();
+  toast('Folder forgotten. No FIT files were deleted.');
+}
+
+async function importFiles(files) {
+  if (!files.length) return;
+  const generation = ++scanGeneration;
+  const { sessions, failures } = await parseFitFiles(entriesFromFiles(files));
+  if (generation !== scanGeneration) return;
+  await restoreAnnotations(sessions);
+
+  const combined = state.sourceMode === 'manual' ? [...state.sessions] : [];
+  const existing = new Set(combined.map(session => session.id));
+  for (const session of sessions) {
+    if (!existing.has(session.id)) combined.push(session);
+  }
+
+  replaceSessions(combined, 'manual');
+  render();
+  toast(`Showing ${combined.length} manually imported FIT session(s).`);
+  notifyFailures(failures);
+}
+
+async function importTemporaryFolder(files) {
+  const generation = ++scanGeneration;
+  const { sessions, failures } = await parseFitFiles(entriesFromFiles(files, true));
+  if (generation !== scanGeneration) return;
+  await restoreAnnotations(sessions);
+  state.folderHandle = null;
+  state.folderName = files[0]?.webkitRelativePath?.split('/')[0] || 'Selected folder';
+  state.folderStatus = 'temporary';
+  replaceSessions(sessions, 'folder');
+  render();
+  toast(`${sessions.length} swimming session(s) loaded. This browser requires reselecting the folder next time.`);
+  notifyFailures(failures);
+}
+
+async function saveSessionNotes(id) {
+  const session = state.sessions.find(item => item.id === id);
+  if (!session) return;
+
+  session.notes = query('#notes').value;
+  session.equipment = query('#equipment').value.split(',').map(value => value.trim()).filter(Boolean);
+  state.drafts.delete(id);
+  try {
+    await saveAnnotations(session);
+    toast('Annotations saved in this browser.');
+  } catch (error) {
+    alert(`Unable to store annotations: ${error.message}`);
+  }
+}
+
+async function clearSavedNotes() {
+  await clearAnnotations();
+  state.drafts.clear();
+  for (const session of state.sessions) {
+    session.notes = '';
+    session.equipment = [];
+    session.lengthOverrides = {};
+  }
+  render();
+  toast('Saved annotations and length decisions cleared.');
+}
+
+async function restoreBackup(file) {
+  if (!file) return;
+
+  try {
+    const backup = JSON.parse(await file.text());
+    if (backup.format !== 'myswimlab' || !Array.isArray(backup.sessions)) {
+      throw new Error('Not a MySwimLab backup');
+    }
+    const sessions = validateBackup(backup); // All entries are checked before writes.
+    await saveAnnotationsBatch(sessions);     // One transaction, all or nothing.
+    scanGeneration++;
+    state.drafts.clear();
+    replaceSessions(sessions, 'manual');
+    render();
+    toast(`Restored ${sessions.length} session(s) into the manual view.`);
+  } catch (error) {
+    alert(`Could not restore backup: ${error.message}`);
+  }
+}
+
+/** Save a user's explicit decision without ever modifying the source FIT file. */
+async function changeLengthQuality(sequence, decision) {
+  const session = state.sessions.find(item => item.id === state.selectedSessionId);
+  if (!session || !Number.isInteger(sequence) || !['keep', 'exclude', 'reset'].includes(decision)) return;
+  if (!session.lengths.some((length, index) =>
+    (Number.isInteger(length.sequence) ? length.sequence : index) === sequence && !length.isRest)) return;
+
+  const previous = { ...(session.lengthOverrides || {}) };
+  const updated = { ...previous };
+  if (decision === 'reset') delete updated[String(sequence)];
+  else updated[String(sequence)] = decision;
+  session.lengthOverrides = updated;
+
+  try {
+    await saveAnnotations(session);
+    render();
+    toast('Length quality decision saved locally. FIT file unchanged.');
+  } catch (error) {
+    session.lengthOverrides = previous;
+    render();
+    alert(`Could not save length quality decision: ${error.message}`);
+  }
+}
+
+/** All actions use event delegation, so rerendering does not lose listeners. */
+async function onClick(event) {
+  const element = event.target.closest('button, tr[data-select]');
+  if (!element) return;
+  const data = element.dataset;
+
+  if (data.page) {
+    state.page = data.page;
+    render();
+  } else if (data.openSession || data.select) {
+    state.selectedSessionId = data.openSession || data.select;
+    state.page = 'session-detail';
+    render();
+  } else if (data.jumpLength !== undefined) {
+    query(`#length-${Number(data.jumpLength)}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } else if (data.qualitySequence !== undefined) {
+    await changeLengthQuality(Number(data.qualitySequence), data.qualityDecision);
+  } else if (data.period) {
+    state.period = data.period;
+    render();
+  } else if (data.folderSelect) {
+    await chooseFolder();
+  } else if (data.folderRefresh) {
+    await refreshFolder();
+  } else if (data.folderForget) {
+    if (confirm('Forget the selected folder? This will not delete any files.')) await forgetFolder();
+  } else if (data.upload) {
+    query('#fileInput').click();
+  } else if (data.save) {
+    await saveSessionNotes(data.save);
+  } else if (data.delete && state.sourceMode === 'manual') {
+    if (confirm('Remove this manually imported session from the current view? Saved notes will be kept.')) {
+      state.sessions = state.sessions.filter(session => session.id !== data.delete);
+      state.drafts.delete(data.delete);
+      state.selectedSessionId = null;
+      state.page = 'sessions';
+      render();
+      toast('Session removed from view. Saved annotations are unchanged.');
+    }
+  } else if (data.clear) {
+    if (confirm('Clear stored notes, equipment and length-quality decisions? FIT files on disk will not be deleted.')) {
+      try { await clearSavedNotes(); }
+      catch (error) { alert(`Unable to clear notes: ${error.message}`); }
+    }
+  } else if (data.export) {
+    downloadJson('myswimlab-backup.json', {
+      format: 'myswimlab', version: 2,
+      exportedAt: new Date().toISOString(), sessions: state.sessions
+    });
+  } else if (data.restore) {
+    query('#backupInput').click();
+  }
+}
+
+function onInput(event) {
+  if (!['notes', 'equipment'].includes(event.target.id)) return;
+  const id = state.selectedSessionId;
+  if (!id) return;
+  const existing = state.drafts.get(id) || {
+    notes: state.sessions.find(session => session.id === id)?.notes || '',
+    equipment: (state.sessions.find(session => session.id === id)?.equipment || []).join(', ')
+  };
+  existing[event.target.id] = event.target.value;
+  state.drafts.set(id, existing);
+}
+
+async function onChange(event) {
+  const input = event.target;
+  try {
+    if (input.id === 'fileInput') await importFiles([...input.files]);
+    if (input.id === 'folderInput') await importTemporaryFolder([...input.files]);
+    if (input.id === 'backupInput') await restoreBackup(input.files[0]);
+  } catch (error) {
+    alert(`Unable to read selected files: ${error.message}`);
+  } finally {
+    if (['fileInput', 'folderInput', 'backupInput'].includes(input.id)) input.value = '';
+  }
+}
+
+async function boot() {
+  // Never load demo sessions or cached activity history automatically.
+  render();
+  try {
+    const handle = await loadFolderHandle();
+    if (handle) {
+      state.folderHandle = handle;
+      state.folderName = handle.name;
+      await scanFolder(handle);
+    }
+  } catch (error) {
+    console.warn('Cannot restore saved FIT folder:', error);
+    state.folderStatus = 'unselected';
+    render();
+  }
+}
+
+window.addEventListener('click', onClick);
+window.addEventListener('change', onChange);
+window.addEventListener('input', onInput);
+boot();
+
+
+</script>
+</body>
+</html>

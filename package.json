@@ -1,0 +1,14 @@
+{
+  "name": "myswimlab",
+  "version": "0.4.3",
+  "private": true,
+  "type": "module",
+  "description": "Local-first, dependency-free swimming analytics prototype",
+  "scripts": {
+    "test": "node --test",
+    "check": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

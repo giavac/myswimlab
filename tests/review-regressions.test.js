@@ -1,0 +1,150 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { decodeMessages } from '../src/fit/decoder.js';
+import { parseFit } from '../src/fit/swimming-parser.js';
+import { distanceBests } from '../src/analytics/best-efforts.js';
+import { weekVolumes, formatDate } from '../src/analytics/metrics.js';
+import { validateBackup } from '../src/data/backup.js';
+import { parseFitFiles } from '../src/data/folder-source.js';
+import { sessionsPage } from '../src/ui/sessions-list.js';
+import { makeFit } from './fit-fixture.js';
+
+const arrayBuffer = bytes => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+const parse = opts => parseFit(arrayBuffer(makeFit(opts)), 'swim.fit');
+
+/** A minimal single-field FIT binary record for generic decoder checks. */
+function scalarFit(type, size, bytes, littleEndian = true) {
+  const definition = Buffer.from([0x40, 0, littleEndian ? 0 : 1,
+    littleEndian ? 77 : 0, littleEndian ? 0 : 77, 1, 1, size, type]);
+  const body = Buffer.concat([definition, Buffer.from([0]), bytes]);
+  const header = Buffer.alloc(14);
+  header[0] = 14;
+  header.writeUInt32LE(body.length, 4);
+  header.write('.FIT', 8, 'ascii');
+  return arrayBuffer(Buffer.concat([header, body, Buffer.alloc(2)]));
+}
+const scalar = (type, bytes, littleEndian = true) =>
+  decodeMessages(scalarFit(type, bytes.length, Buffer.from(bytes), littleEndian))[0].fields[1];
+
+test('a 25-yard FIT pool is 22.86 meters, converted exactly once', () => {
+  const swim = parse({ poolMeters: 22.86, poolUnit: 1, durations: [25, 26, 24, 27] });
+  assert.equal(swim.poolMeters, 22.86);
+  assert.equal(swim.poolUnit, 'yd');
+  assert.equal(swim.lengths[0].distance, 22.86);
+  assert.equal(swim.distance, 91.44); // distances remain meters with centimeter precision
+});
+
+test('yard best efforts are separate from meter best efforts', () => {
+  const yard = parse({ poolMeters: 22.86, poolUnit: 1, durations: [25, 26, 24, 27] });
+  const meter = parse({ poolMeters: 25, poolUnit: 0, durations: [21, 22, 23, 24] });
+  assert.equal(distanceBests([yard, meter], [50], 'yd')[0].time, 50);
+  assert.equal(distanceBests([yard, meter], [50], 'm')[0].time, 43);
+  assert.equal(distanceBests([yard], [50], 'm')[0].time, null);
+});
+
+test('invalid enum is null; zero-capable unsigned types have zero sentinel', () => {
+  assert.equal(scalar(0, [255]), null);
+  assert.equal(scalar(0, [5]), 5);
+  assert.equal(scalar(10, [0]), null);
+  assert.equal(scalar(10, [255]), 255);
+  assert.equal(scalar(11, [0, 0]), null);
+  assert.equal(scalar(11, [255, 255]), 65535);
+  assert.equal(scalar(12, [0, 0, 0, 0]), null);
+  assert.equal(scalar(12, [255, 255, 255, 255]), 4294967295);
+  assert.equal(scalar(16, [0, 0, 0, 0, 0, 0, 0, 0]), null);
+});
+
+test('sint64 is signed and sentinel values are null', () => {
+  assert.equal(scalar(14, [255, 255, 255, 255, 255, 255, 255, 255]), -1);
+  assert.equal(scalar(14, [255, 255, 255, 255, 255, 255, 255, 127]), null);
+  assert.equal(scalar(15, [255, 255, 255, 255, 255, 255, 255, 255]), null);
+  assert.equal(scalar(16, [255, 255, 255, 255, 255, 255, 255, 255]), 18446744073709551615n);
+});
+
+test('big-endian scalar fields decode correctly', () => {
+  assert.equal(scalar(4, [0x12, 0x34], false), 0x1234);
+  assert.equal(scalar(6, [0x12, 0x34, 0x56, 0x78], false), 0x12345678);
+});
+
+test('compressed timestamps remain correct past the 32-bit signed boundary', () => {
+  // Message definition contains explicit timestamp field 253 followed by a
+  // compact message (local type 0, offset 1) without its own timestamp field.
+  const definition = Buffer.from([0x40, 0, 0, 77, 0, 1, 253, 4, 6]);
+  const base = Buffer.alloc(5);
+  base[0] = 0;
+  base.writeUInt32LE(2 ** 31 + 31, 1);
+  const compressed = Buffer.from([0x81]);
+  const body = Buffer.concat([definition, base, compressed]);
+  const header = Buffer.alloc(14); header[0] = 14;
+  header.writeUInt32LE(body.length, 4); header.write('.FIT', 8, 'ascii');
+  const messages = decodeMessages(arrayBuffer(Buffer.concat([header, body, Buffer.alloc(2)])));
+  assert.equal(messages[0].fields[253], 2 ** 31 + 31);
+  assert.equal(messages[1].fields[253], 2 ** 31 + 33);
+});
+
+test('developer fields are skipped without misaligning the next message', () => {
+  const def = Buffer.from([0x60, 0, 0, 77, 0, 1, 1, 1, 2, 1, 0, 2, 3]);
+  const body = Buffer.concat([def, Buffer.from([0, 9, 19, 0, 0, 4, 7, 0])]);
+  const header = Buffer.alloc(14); header[0] = 14;
+  header.writeUInt32LE(body.length, 4); header.write('.FIT', 8, 'ascii');
+  const messages = decodeMessages(arrayBuffer(Buffer.concat([header, body, Buffer.alloc(2)])));
+  assert.deepEqual(messages.map(m => m.fields[1]), [9, 4]);
+});
+
+test('multiple swimming session records are explicitly rejected, not merged', () => {
+  assert.throws(() => parse({ additionalSession: true }), /Multi-session FIT/);
+});
+
+test('session list actually renders all entries and has keyboard-focusable buttons', () => {
+  const session = parse({});
+  const html = sessionsPage([session]);
+  assert.match(html, /All sessions/);
+  assert.match(html, /<button class="session-link" data-select=/);
+  // The full session list must not silently truncate at 100 activities.
+  const many = Array.from({ length: 115 }, (_, i) => ({ ...session, id: `id-${i}` }));
+  const manyHtml = sessionsPage(many);
+  assert.match(manyHtml, /data-select="id-114"/);
+});
+
+test('backup validation checks all sessions before a database transaction', () => {
+  const valid = parse({});
+  const invalid = { ...valid, id: 'bad', date: 'garbage' };
+  assert.equal(validateBackup({format:'myswimlab', sessions:[valid]}).length, 1);
+  assert.throws(() => validateBackup({format:'myswimlab', sessions:[valid, invalid]}), /position 2/);
+  assert.throws(() => validateBackup({format:'myswimlab', sessions:[valid, valid]}), /Duplicate session/);
+});
+
+test('the 300 FIT-file limit also applies to manual imports', async () => {
+  const files = Array.from({length:301}, (_, i) => ({file:{name:`${i}.fit`},path:`${i}.fit`}));
+  await assert.rejects(parseFitFiles(files), /over 300 FIT files/);
+});
+
+test('missing FIT timestamps produce stable hash IDs and valid fallback dates', () => {
+  const raw = arrayBuffer(makeFit({ omitTimestamps: true }));
+  const first = parseFit(raw, 'swim.fit', {
+    fileHash: 'abc123', fallbackDate: '2026-11-01T08:00:00.000Z'
+  });
+  const second = parseFit(raw, 'swim.fit', {
+    fileHash: 'abc123', fallbackDate: '2026-11-03T08:00:00.000Z'
+  });
+  assert.equal(first.id, 'fit-sha256-abc123');
+  assert.equal(first.id, second.id);
+  assert.equal(first.date, '2026-11-01T08:00:00.000Z');
+});
+
+test("local calendar dates and week grouping use the user timezone", () => {
+  const previousTZ = process.env.TZ;
+  try {
+    process.env.TZ = 'Pacific/Honolulu';
+    const utcMonday = '2026-11-02T00:30:00Z'; // Sunday afternoon in Honolulu
+    assert.notEqual(formatDate(utcMonday, {weekday:'short'}), 'Mon');
+    const output = weekVolumes([{
+      id:'a', date:utcMonday, distance:100, duration:1, lengths:[]
+    }]);
+    assert.deepEqual(output.map(v => v.value), [0.1]);
+    assert.equal(output[0].label, '26 Oct');
+  } finally {
+    if (previousTZ === undefined) delete process.env.TZ;
+    else process.env.TZ = previousTZ;
+  }
+});
