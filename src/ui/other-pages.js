@@ -13,9 +13,10 @@ function effortGroup(sessions, unit) {
     label: `${effort.distance}${unit}`,
     value: effort.time * 100 / effort.distance
   }));
+  const unitHtml = escapeHtml(unit);
   const rows = efforts.map(effort => `
     <tr>
-      <td>${effort.distance} ${unit}</td>
+      <td>${effort.distance} ${unitHtml}</td>
       <td class="strong">${formatSeconds(effort.time)}</td>
       <td>${effort.time !== null ? formatSeconds(effort.time * 100 / effort.distance) : '—'}</td>
       <td>${effort.session ? formatDate(effort.session.date) : '—'}</td>
@@ -23,10 +24,10 @@ function effortGroup(sessions, unit) {
   return `
     <section class="panel">
       <div class="panelhead"><div><h2>Best pace — ${unit === 'yd' ? 'yards' : 'meters'}</h2>
-        <p>Seconds / 100${unit} · lower is faster</p></div></div>
+        <p>Seconds / 100${unitHtml} · lower is faster</p></div></div>
       ${lineChart(curve, { unit: 'pace', label: `Best pace per 100${unit}` })}
       <div class="tablewrap"><table>
-        <thead><tr><th>Distance</th><th>Best time</th><th>Pace /100${unit}</th><th>Session</th></tr></thead>
+        <thead><tr><th>Distance</th><th>Best time</th><th>Pace /100${unitHtml}</th><th>Session</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
     </section>`;

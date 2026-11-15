@@ -1,3 +1,11 @@
+/** Analytics and views read these length fields without further checks. */
+function validLength(length) {
+  return length !== null && typeof length === 'object' && !Array.isArray(length) &&
+    typeof length.isRest === 'boolean' &&
+    Number.isFinite(length.distance) && length.distance >= 0 &&
+    (length.duration === null || Number.isFinite(length.duration));
+}
+
 /** Validation before any write. Backups are untrusted JSON from the user's disk. */
 export function validateBackup(value) {
   if (!value || value.format !== 'myswimlab' || !Array.isArray(value.sessions)) {
@@ -8,7 +16,8 @@ export function validateBackup(value) {
     const validDate = typeof session?.date === 'string' &&
       Number.isFinite(Date.parse(session.date));
     const valid = typeof session?.id === 'string' && session.id.length > 0 &&
-      validDate && Array.isArray(session.lengths) &&
+      validDate && Array.isArray(session.lengths) && session.lengths.every(validLength) &&
+      [undefined, null, 'm', 'yd'].includes(session.poolUnit) &&
       Number.isFinite(session.distance) && session.distance >= 0 &&
       Number.isFinite(session.duration) && session.duration >= 0 &&
       typeof session.sport === 'string' &&

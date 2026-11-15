@@ -28,7 +28,7 @@ export function sessionPage() {
     .map((length, index) => ({ label: String(index + 1), value: length.strokes }));
   const drift = lengthDrift(session);
   const correctedPace = totals.excluded > 0;
-  const swimType = session.sport === 'pool' ? `Pool ${formatNumber(session.poolUnit === 'yd' ? session.poolMeters / 0.9144 : session.poolMeters, 2)}${session.poolUnit || 'm'}` : 'Open water';
+  const swimType = session.sport === 'pool' ? `Pool ${formatNumber(session.poolUnit === 'yd' ? session.poolMeters / 0.9144 : session.poolMeters, 2)}${escapeHtml(session.poolUnit || 'm')}` : 'Open water';
   const hasRestExcluded = session.sport === 'pool' && session.durationBasis !== 'timer';
   const movingTimeDescription = hasRestExcluded
     ? session.restDuration > 0

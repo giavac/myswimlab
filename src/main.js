@@ -147,8 +147,8 @@ async function importFiles(files) {
   if (!files.length) return;
   const generation = ++scanGeneration;
   const { sessions, failures } = await parseFitFiles(entriesFromFiles(files));
-  if (generation !== scanGeneration) return;
   await restoreAnnotations(sessions);
+  if (generation !== scanGeneration) return;
 
   const combined = state.sourceMode === 'manual' ? [...state.sessions] : [];
   const existing = new Set(combined.map(session => session.id));
@@ -165,8 +165,8 @@ async function importFiles(files) {
 async function importTemporaryFolder(files) {
   const generation = ++scanGeneration;
   const { sessions, failures } = await parseFitFiles(entriesFromFiles(files, true));
-  if (generation !== scanGeneration) return;
   await restoreAnnotations(sessions);
+  if (generation !== scanGeneration) return;
   state.folderHandle = null;
   state.folderName = files[0]?.webkitRelativePath?.split('/')[0] || 'Selected folder';
   state.folderStatus = 'temporary';

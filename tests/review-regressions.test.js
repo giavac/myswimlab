@@ -8,6 +8,10 @@ import { validateBackup } from '../src/data/backup.js';
 import { parseFitFiles } from '../src/data/folder-source.js';
 import { sessionsPage } from '../src/ui/sessions-list.js';
 import { makeFit } from './fit-fixture.js';
+import { state } from '../src/state.js';
+import { performancePage } from '../src/ui/other-pages.js';
+import { overview } from '../src/ui/overview.js';
+import { sessionPage } from '../src/ui/session-detail.js';
 
 const arrayBuffer = bytes => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
 const parse = opts => parseFit(arrayBuffer(makeFit(opts)), 'swim.fit');
@@ -146,5 +150,33 @@ test("local calendar dates and week grouping use the user timezone", () => {
   } finally {
     if (previousTZ === undefined) delete process.env.TZ;
     else process.env.TZ = previousTZ;
+  }
+});
+
+test('backup validation rejects an unknown pool unit', () => {
+  const valid = parse({});
+  const xss = { ...valid, poolUnit: '<img src=x onerror=alert(1)>' };
+  assert.throws(() => validateBackup({format:'myswimlab', sessions:[xss]}), /position 1/);
+  assert.equal(validateBackup({format:'myswimlab', sessions:[{ ...valid, poolUnit: 'yd' }]}).length, 1);
+  assert.equal(validateBackup({format:'myswimlab', sessions:[{ ...valid, poolUnit: null }]}).length, 1);
+});
+
+test('backup validation rejects malformed length entries', () => {
+  const valid = parse({});
+  const bad = [null, 'x', [], { ...valid.lengths[0], isRest: 'no' },
+    { ...valid.lengths[0], distance: 'far' }, { ...valid.lengths[0], duration: '1' }];
+  for (const length of bad) {
+    const session = { ...valid, lengths: [...valid.lengths, length] };
+    assert.throws(() => validateBackup({format:'myswimlab', sessions:[session]}), /position 1/);
+  }
+});
+
+test('pool unit text is escaped in rendered pages', () => {
+  const payload = '<img src=x onerror=alert(1)>';
+  const session = { ...parse({}), poolUnit: payload };
+  state.sessions = [session];
+  state.selectedSessionId = session.id;
+  for (const html of [performancePage([session]), overview([session]), sessionPage()]) {
+    assert.doesNotMatch(html, /<img/);
   }
 });

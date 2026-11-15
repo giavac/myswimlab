@@ -28,14 +28,15 @@ function bestEffortsPanel(sessions) {
   const groups = units.length ? units : ['m'];
   const tiles = groups.map(unit => {
     const efforts = distanceBests(sessions, [25, 50, 100, 200, 400, 800], unit);
+    const unitHtml = escapeHtml(unit);
     return `<div class="effort-group">
       ${groups.length > 1 ? `<h3>${unit === 'yd' ? 'Yard pool' : 'Meter pool'}</h3>` : ''}
       <div class="bests">${efforts.map(effort => `
         <div class="besttile">
-          <span>${effort.distance} ${unit}</span>
+          <span>${effort.distance} ${unitHtml}</span>
           <strong>${formatSeconds(effort.time)}</strong>
           <small>${effort.session
-            ? `<span class="best-pace">${formatSeconds(effort.time * 100 / effort.distance)}/100${unit}</span> · ${formatDate(effort.session.date, { month: 'short', day: 'numeric' })}`
+            ? `<span class="best-pace">${formatSeconds(effort.time * 100 / effort.distance)}/100${unitHtml}</span> · ${formatDate(effort.session.date, { month: 'short', day: 'numeric' })}`
             : 'No continuous segment recorded'}</small>
         </div>`).join('')}</div></div>`;
   }).join('');
