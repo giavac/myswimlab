@@ -1,4 +1,4 @@
-# Length quality filtering (v0.4.3)
+# Length quality filtering (v0.1.0)
 
 ## Aim
 

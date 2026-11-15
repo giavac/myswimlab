@@ -58,7 +58,7 @@ export function layout() {
           </div>
         </header>
         <main id="main"></main>
-        <footer>MySwimLab v0.4.3 review · Experimental analytics · <a href="https://developer.garmin.com/fit/" target="_blank" rel="noopener">About FIT</a></footer>
+        <footer>MySwimLab v0.1.0 review · Experimental analytics · <a href="https://developer.garmin.com/fit/" target="_blank" rel="noopener">About FIT</a></footer>
       </div>
     </div>
     <input id="fileInput" type="file" accept=".fit,application/octet-stream" multiple hidden/>

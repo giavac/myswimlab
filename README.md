@@ -2,7 +2,7 @@
 
 **Local-first swimming analytics for Garmin FIT activities.** MySwimLab is a browser-based tool for exploring pool and open-water swim sessions, reviewing recorded lengths and pace, and identifying possible recording outliers. It has no account, backend, telemetry or runtime dependencies.
 
-> **Status:** v0.4.3 is an early open-source release. FIT parsing and outlier detection are experimental; verify results against the original activity.
+> **Status:** v0.1.0 is an early open-source release. FIT parsing and outlier detection are experimental; verify results against the original activity.
 
 ## Features
 

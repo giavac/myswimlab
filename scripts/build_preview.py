@@ -57,7 +57,7 @@ preview = f'''<!doctype html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MySwimLab v0.4.3</title>
+  <title>MySwimLab v0.1.0</title>
   <style>\n{styles}\n</style>
 </head>
 <body>
