@@ -18,7 +18,7 @@ function median(values) {
   return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
 }
 
-function active(length) {
+export function active(length) {
   return length && !length.isRest && Number.isFinite(length.duration) && length.duration > 0 &&
     Number.isFinite(length.distance) && length.distance > 0;
 }

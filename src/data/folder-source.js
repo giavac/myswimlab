@@ -53,8 +53,9 @@ export async function parseFitFiles(entries) {
 
     try {
       const buffer = await file.arrayBuffer();
-      // Hash only files without any FIT activity timestamp, for a stable ID.
-      // A per-file SHA-256 also allows future importers to identify duplicates.
+      // Hash every file. parseFit uses the hash as the ID only when the file has
+      // no FIT activity timestamp. A per-file SHA-256 also allows future
+      // importers to identify duplicates.
       const hashBytes = await crypto.subtle.digest('SHA-256', buffer);
       const fileHash = [...new Uint8Array(hashBytes)]
         .map(byte => byte.toString(16).padStart(2, '0')).join('');

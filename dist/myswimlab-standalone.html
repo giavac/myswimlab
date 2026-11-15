@@ -1530,7 +1530,7 @@ function summary(sessions) {
   const activeLengths = sessions.flatMap(session => {
     const flags = assessLengths(session);
     return (session.lengths || []).filter((length, index) =>
-      !length.isRest && length.duration > 0 && !flags[index].excluded);
+      active(length) && !flags[index].excluded);
   });
   const lengthsWithStrokes = activeLengths.filter(length => Number.isFinite(length.strokes));
 
@@ -1666,8 +1666,9 @@ async function parseFitFiles(entries) {
 
     try {
       const buffer = await file.arrayBuffer();
-      // Hash only files without any FIT activity timestamp, for a stable ID.
-      // A per-file SHA-256 also allows future importers to identify duplicates.
+      // Hash every file. parseFit uses the hash as the ID only when the file has
+      // no FIT activity timestamp. A per-file SHA-256 also allows future
+      // importers to identify duplicates.
       const hashBytes = await crypto.subtle.digest('SHA-256', buffer);
       const fileHash = [...new Uint8Array(hashBytes)]
         .map(byte => byte.toString(16).padStart(2, '0')).join('');
@@ -1772,8 +1773,13 @@ function openDatabase() {
         database.createObjectStore(CONFIG_STORE);
       }
     };
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      // Let a newer version in another tab upgrade the database.
+      request.result.onversionchange = () => request.result.close();
+      resolve(request.result);
+    };
     request.onerror = () => reject(request.error);
+    request.onblocked = () => reject(new Error('Close other MySwimLab tabs, then try again.'));
   });
 }
 
@@ -2238,13 +2244,15 @@ function sessionPage() {
   const lengths = session.lengths || [];
   const quality = assessLengths(session);
   const excluded = quality.map((flag, index) => flag.excluded ? index : -1).filter(index => index >= 0);
-  const active = lengths.filter((length, index) => !length.isRest && length.duration > 0 && length.distance > 0 && !quality[index].excluded);
+  // Chart labels use the record number from the length table, not a new count.
+  const shown = lengths.map((length, index) => ({ length, record: String(index + 1) }))
+    .filter(({ length }, index) => active(length) && !quality[index].excluded);
   const totals = paceTotals(session);
-  const paceByLength = active.map((length, index) => ({
-    label: String(index + 1), value: length.duration * 100 / length.distance
+  const paceByLength = shown.map(({ length, record }) => ({
+    label: record, value: length.duration * 100 / length.distance
   }));
-  const strokesByLength = active.filter(length => Number.isFinite(length.strokes))
-    .map((length, index) => ({ label: String(index + 1), value: length.strokes }));
+  const strokesByLength = shown.filter(({ length }) => Number.isFinite(length.strokes))
+    .map(({ length, record }) => ({ label: record, value: length.strokes }));
   const drift = lengthDrift(session);
   const correctedPace = totals.excluded > 0;
   const swimType = session.sport === 'pool' ? `Pool ${formatNumber(session.poolUnit === 'yd' ? session.poolMeters / 0.9144 : session.poolMeters, 2)}${escapeHtml(session.poolUnit || 'm')}` : 'Open water';
@@ -2278,7 +2286,8 @@ function sessionPage() {
       ${metric('Length drift', drift === null ? '—' : `${drift >= 0 ? '+' : ''}${drift.toFixed(1)}%`, 'Stroke count: last vs first quarter', 'wave')}
     </div>
 
-    ${hasRestExcluded && session.restDuration > 0 && Number.isFinite(session.timerDuration) ? `
+    ${hasRestExcluded && session.restDuration > 0 && Number.isFinite(session.timerDuration) &&
+      Math.abs(session.duration + session.restDuration - session.timerDuration) < 1 ? `
       <p class="fineprint">Swimming ${formatDuration(session.duration)} + recorded rest ${formatDuration(session.restDuration)} = FIT timer ${formatDuration(session.timerDuration)}.</p>
     ` : ''}
 
@@ -2534,7 +2543,7 @@ function render() {
   };
 
   query('#main').innerHTML = (pages[state.page] || pages.overview)();
-  document.title = `${state.page[0].toUpperCase() + state.page.slice(1)} · MySwimLab`;
+  document.title = `${state.page[0].toUpperCase() + state.page.slice(1).replace('-', ' ')} · MySwimLab`;
   if (focusKey && focusValue) {
     const replacement = [...document.querySelectorAll(`[data-${focusKey}]`)]
       .find(item => item.dataset[focusKey] === focusValue);
@@ -2699,7 +2708,7 @@ async function forgetFolder() {
   state.folderHandle = null;
   state.folderName = '';
   state.folderStatus = 'unselected';
-  replaceSessions([], 'folder');
+  if (state.sourceMode === 'folder') replaceSessions([], 'folder');
   render();
   toast('Folder forgotten. No FIT files were deleted.');
 }
@@ -2769,9 +2778,6 @@ async function restoreBackup(file) {
 
   try {
     const backup = JSON.parse(await file.text());
-    if (backup.format !== 'myswimlab' || !Array.isArray(backup.sessions)) {
-      throw new Error('Not a MySwimLab backup');
-    }
     const sessions = validateBackup(backup); // All entries are checked before writes.
     await saveAnnotationsBatch(sessions);     // One transaction, all or nothing.
     scanGeneration++;

@@ -1,5 +1,5 @@
 /** Pure calculations over normalized swimming sessions. No DOM or FIT parsing. */
-import { assessLengths, paceTotals } from './length-quality.js';
+import { active, assessLengths, paceTotals } from './length-quality.js';
 
 export function pace(session) {
   if (!session) return null;
@@ -18,7 +18,7 @@ export function summary(sessions) {
   const activeLengths = sessions.flatMap(session => {
     const flags = assessLengths(session);
     return (session.lengths || []).filter((length, index) =>
-      !length.isRest && length.duration > 0 && !flags[index].excluded);
+      active(length) && !flags[index].excluded);
   });
   const lengthsWithStrokes = activeLengths.filter(length => Number.isFinite(length.strokes));
 

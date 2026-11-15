@@ -22,8 +22,13 @@ function openDatabase() {
         database.createObjectStore(CONFIG_STORE);
       }
     };
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      // Let a newer version in another tab upgrade the database.
+      request.result.onversionchange = () => request.result.close();
+      resolve(request.result);
+    };
     request.onerror = () => reject(request.error);
+    request.onblocked = () => reject(new Error('Close other MySwimLab tabs, then try again.'));
   });
 }
 

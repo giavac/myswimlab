@@ -4,7 +4,7 @@ import { lengthDrift, pace, formatNumber, formatSeconds, formatDuration, formatD
 import { lineChart } from './charts.js';
 import { emptyState, lengthTable, metric } from './components.js';
 import { escapeHtml } from './shared.js';
-import { assessLengths, paceTotals } from '../analytics/length-quality.js';
+import { active, assessLengths, paceTotals } from '../analytics/length-quality.js';
 
 export function sessionPage() {
   const session = selectedSession();
@@ -19,13 +19,15 @@ export function sessionPage() {
   const lengths = session.lengths || [];
   const quality = assessLengths(session);
   const excluded = quality.map((flag, index) => flag.excluded ? index : -1).filter(index => index >= 0);
-  const active = lengths.filter((length, index) => !length.isRest && length.duration > 0 && length.distance > 0 && !quality[index].excluded);
+  // Chart labels use the record number from the length table, not a new count.
+  const shown = lengths.map((length, index) => ({ length, record: String(index + 1) }))
+    .filter(({ length }, index) => active(length) && !quality[index].excluded);
   const totals = paceTotals(session);
-  const paceByLength = active.map((length, index) => ({
-    label: String(index + 1), value: length.duration * 100 / length.distance
+  const paceByLength = shown.map(({ length, record }) => ({
+    label: record, value: length.duration * 100 / length.distance
   }));
-  const strokesByLength = active.filter(length => Number.isFinite(length.strokes))
-    .map((length, index) => ({ label: String(index + 1), value: length.strokes }));
+  const strokesByLength = shown.filter(({ length }) => Number.isFinite(length.strokes))
+    .map(({ length, record }) => ({ label: record, value: length.strokes }));
   const drift = lengthDrift(session);
   const correctedPace = totals.excluded > 0;
   const swimType = session.sport === 'pool' ? `Pool ${formatNumber(session.poolUnit === 'yd' ? session.poolMeters / 0.9144 : session.poolMeters, 2)}${escapeHtml(session.poolUnit || 'm')}` : 'Open water';
@@ -59,7 +61,8 @@ export function sessionPage() {
       ${metric('Length drift', drift === null ? '—' : `${drift >= 0 ? '+' : ''}${drift.toFixed(1)}%`, 'Stroke count: last vs first quarter', 'wave')}
     </div>
 
-    ${hasRestExcluded && session.restDuration > 0 && Number.isFinite(session.timerDuration) ? `
+    ${hasRestExcluded && session.restDuration > 0 && Number.isFinite(session.timerDuration) &&
+      Math.abs(session.duration + session.restDuration - session.timerDuration) < 1 ? `
       <p class="fineprint">Swimming ${formatDuration(session.duration)} + recorded rest ${formatDuration(session.restDuration)} = FIT timer ${formatDuration(session.timerDuration)}.</p>
     ` : ''}
 

@@ -24,7 +24,7 @@ export function render() {
   };
 
   query('#main').innerHTML = (pages[state.page] || pages.overview)();
-  document.title = `${state.page[0].toUpperCase() + state.page.slice(1)} · MySwimLab`;
+  document.title = `${state.page[0].toUpperCase() + state.page.slice(1).replace('-', ' ')} · MySwimLab`;
   if (focusKey && focusValue) {
     const replacement = [...document.querySelectorAll(`[data-${focusKey}]`)]
       .find(item => item.dataset[focusKey] === focusValue);

@@ -138,7 +138,7 @@ async function forgetFolder() {
   state.folderHandle = null;
   state.folderName = '';
   state.folderStatus = 'unselected';
-  replaceSessions([], 'folder');
+  if (state.sourceMode === 'folder') replaceSessions([], 'folder');
   render();
   toast('Folder forgotten. No FIT files were deleted.');
 }
@@ -208,9 +208,6 @@ async function restoreBackup(file) {
 
   try {
     const backup = JSON.parse(await file.text());
-    if (backup.format !== 'myswimlab' || !Array.isArray(backup.sessions)) {
-      throw new Error('Not a MySwimLab backup');
-    }
     const sessions = validateBackup(backup); // All entries are checked before writes.
     await saveAnnotationsBatch(sessions);     // One transaction, all or nothing.
     scanGeneration++;

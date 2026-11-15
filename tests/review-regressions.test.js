@@ -12,6 +12,7 @@ import { state } from '../src/state.js';
 import { performancePage } from '../src/ui/other-pages.js';
 import { overview } from '../src/ui/overview.js';
 import { sessionPage } from '../src/ui/session-detail.js';
+import { summary } from '../src/analytics/metrics.js';
 
 const arrayBuffer = bytes => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
 const parse = opts => parseFit(arrayBuffer(makeFit(opts)), 'swim.fit');
@@ -179,4 +180,32 @@ test('pool unit text is escaped in rendered pages', () => {
   for (const html of [performancePage([session]), overview([session]), sessionPage()]) {
     assert.doesNotMatch(html, /<img/);
   }
+});
+
+test('length charts label points with the record number from the length table', () => {
+  const session = parse({ durations: [23, 24, 22], restAfter: [0] });
+  state.sessions = [session];
+  state.selectedSessionId = session.id;
+  const labels = [...sessionPage().matchAll(/font-size="11" fill="#7d91a8">(\d+)<\/text>/g)]
+    .map(match => match[1]);
+  // Record 2 is the rest marker, so the pace and stroke charts show 1, 3, 4.
+  assert.deepEqual(labels, ['1', '3', '4', '1', '3', '4']);
+});
+
+test('the swimming + rest = timer line shows only when the values add up', () => {
+  const session = parse({ durations: [23, 24], restAfter: [0] });
+  state.sessions = [session];
+  state.selectedSessionId = session.id;
+  assert.match(sessionPage(), /= FIT timer/);
+  state.sessions = [{ ...session, timerDuration: session.timerDuration + 60 }];
+  assert.doesNotMatch(sessionPage(), /= FIT timer/);
+});
+
+test('summary stroke mean ignores non-rest lengths with no distance', () => {
+  const session = parse({ durations: [23, 24] });
+  const odd = { ...session.lengths[0], sequence: 2, index: 2, distance: 0, strokes: 99 };
+  const base = summary([session]);
+  const withOdd = summary([{ ...session, lengths: [...session.lengths, odd] }]);
+  assert.equal(withOdd.stroke, base.stroke);
+  assert.equal(withOdd.activeLengths, base.activeLengths);
 });
