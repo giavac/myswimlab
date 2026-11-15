@@ -13,6 +13,7 @@ import { performancePage } from '../src/ui/other-pages.js';
 import { overview } from '../src/ui/overview.js';
 import { sessionPage } from '../src/ui/session-detail.js';
 import { summary } from '../src/analytics/metrics.js';
+import { layout } from '../src/ui/layout.js';
 
 const arrayBuffer = bytes => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
 const parse = opts => parseFit(arrayBuffer(makeFit(opts)), 'swim.fit');
@@ -208,4 +209,47 @@ test('summary stroke mean ignores non-rest lengths with no distance', () => {
   const withOdd = summary([{ ...session, lengths: [...session.lengths, odd] }]);
   assert.equal(withOdd.stroke, base.stroke);
   assert.equal(withOdd.activeLengths, base.activeLengths);
+});
+
+test('session analysis marks only distances where the session holds the current best', () => {
+  const fast = parse({ durations: [20, 20, 20, 20] });
+  const slow = parse({ durations: [25, 25, 25, 25, 25, 25, 25, 25] });
+  state.sessions = [fast, slow];
+  state.period = '7'; // PBs compare all loaded sessions, not the selected period.
+
+  state.selectedSessionId = fast.id;
+  const fastHtml = sessionPage();
+  assert.match(fastHtml, /Personal best: 3 distances/);
+  assert.ok(fastHtml.includes('100 m: 1:20'));
+  assert.ok(!fastHtml.includes('200 m:'));
+
+  state.selectedSessionId = slow.id;
+  const slowHtml = sessionPage();
+  assert.match(slowHtml, /Personal best: 1 distance</);
+  assert.ok(slowHtml.includes('200 m: 3:20'));
+  assert.ok(slowHtml.includes('records 1–8'));
+  assert.ok(!slowHtml.includes('25 m:'));
+  state.period = 'all';
+});
+
+test('personal-best record numbers match the length table across a rest', () => {
+  const session = parse({ durations: [30, 20, 21, 30], restAfter: [0] });
+  state.sessions = [session];
+  state.selectedSessionId = session.id;
+  const html = sessionPage();
+  assert.ok(html.includes('25 m: 0:20'));
+  assert.match(html, /25 m: 0:20[\s\S]*?record 3</);
+  assert.match(html, /50 m: 0:41[\s\S]*?records 3–4</);
+});
+
+test('a session without a personal best has no badge', () => {
+  const fast = parse({ durations: [20, 20, 20, 20] });
+  const slow = parse({ durations: [25, 25, 25, 25] });
+  state.sessions = [fast, slow];
+  state.selectedSessionId = slow.id;
+  assert.ok(!sessionPage().includes('Personal best'));
+});
+
+test('the footer links to the GitHub issue form in a new tab', () => {
+  assert.match(layout(), /<footer>[\s\S]*<a href="https:\/\/github\.com\/giavac\/myswimlab\/issues\/new" target="_blank" rel="noopener">Report an issue<\/a>[\s\S]*<\/footer>/);
 });

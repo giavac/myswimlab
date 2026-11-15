@@ -38,7 +38,8 @@ export function distanceBests(sessions, targets = [25, 50, 100, 200, 400, 800], 
           // Allow a small FIT rounding error, not a yard/meter crossover.
           if (Math.abs(distance - targetMeters) <= 0.05) {
             if (!best || time < best.time) {
-              best = { distance: target, distanceMeters: targetMeters, unit, time, session };
+              // start and end are indexes into session.lengths (inclusive).
+              best = { distance: target, distanceMeters: targetMeters, unit, time, session, start, end };
             }
             break;
           }

@@ -1,9 +1,10 @@
 /** Inspect one session, with optional browser-local annotations. */
-import { selectedSession, state } from '../state.js';
+import { selectedSession, sortedSessions, state } from '../state.js';
+import { distanceBests } from '../analytics/best-efforts.js';
 import { lengthDrift, pace, formatNumber, formatSeconds, formatDuration, formatDate } from '../analytics/metrics.js';
 import { lineChart } from './charts.js';
 import { emptyState, lengthTable, metric } from './components.js';
-import { escapeHtml } from './shared.js';
+import { escapeHtml, tag } from './shared.js';
 import { active, assessLengths, paceTotals } from '../analytics/length-quality.js';
 
 export function sessionPage() {
@@ -37,6 +38,13 @@ export function sessionPage() {
       ? `Excludes ${formatDuration(session.restDuration)} recorded rest`
       : 'Active lengths only'
     : 'FIT timer time (rest may be included)';
+  // Current all-time bests across all loaded sessions, not only the selected period.
+  const unit = session.poolUnit || 'm';
+  const personalBests = session.sport === 'pool'
+    ? distanceBests(sortedSessions(), [25, 50, 100, 200, 400, 800, 1500], unit)
+      .filter(effort => effort.session?.id === session.id)
+    : [];
+  const unitHtml = escapeHtml(unit);
   const removeButton = state.sourceMode === 'manual'
     ? `<button class="danger-lite" data-delete="${escapeHtml(session.id)}">Remove session</button>`
     : '';
@@ -47,6 +55,7 @@ export function sessionPage() {
         <div class="breadcrumb">SESSIONS / ${formatDate(session.date)}</div>
         <h1>${escapeHtml(session.title)}</h1>
         <p>${formatDate(session.date)} · ${swimType} · ${escapeHtml(session.source)} data</p>
+        ${personalBests.length ? tag('Personal best', 'real') : ''}
       </div>
       <div class="pageactions">
         ${removeButton}
@@ -64,6 +73,18 @@ export function sessionPage() {
     ${hasRestExcluded && session.restDuration > 0 && Number.isFinite(session.timerDuration) &&
       Math.abs(session.duration + session.restDuration - session.timerDuration) < 1 ? `
       <p class="fineprint">Swimming ${formatDuration(session.duration)} + recorded rest ${formatDuration(session.restDuration)} = FIT timer ${formatDuration(session.timerDuration)}.</p>
+    ` : ''}
+
+    ${personalBests.length ? `
+      <section class="panel info" aria-label="Personal bests">
+        <b>Personal best: ${personalBests.length} ${personalBests.length === 1 ? 'distance' : 'distances'}</b>
+        <p>Fastest continuous segment among all loaded sessions. Suspect lengths are excluded.</p>
+        <ul>${personalBests.map(effort => `
+          <li>${effort.distance} ${unitHtml}: ${formatSeconds(effort.time)}
+            (${formatSeconds(effort.time * 100 / effort.distance)}/100${unitHtml}) ·
+            ${effort.start === effort.end ? `record ${effort.start + 1}` : `records ${effort.start + 1}–${effort.end + 1}`}</li>`).join('')}
+        </ul>
+      </section>
     ` : ''}
 
     ${excluded.length ? `
