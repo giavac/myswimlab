@@ -2,7 +2,11 @@
 import { formatNumber, formatSeconds } from '../analytics/metrics.js';
 import { escapeHtml } from './shared.js';
 
-export function lineChart(data, { color = '#2766d6', fill = false, unit = '', label = '' } = {}) {
+/**
+ * Colors come from CSS custom properties so the theme controls them.
+ * `band` shades data indexes `from`..`to` (inclusive) with an optional label.
+ */
+export function lineChart(data, { color = 'var(--accent)', fill = false, unit = '', label = '', band = null } = {}) {
   if (!data.length) return '<div class="empty-chart">Upload sessions to see a trend</div>';
 
   const values = data.map(item => item.value).filter(Number.isFinite);
@@ -29,25 +33,34 @@ export function lineChart(data, { color = '#2766d6', fill = false, unit = '', la
     const value = upper - index * (upper - lower) / 4;
     const caption = unit === 'pace' ? formatSeconds(value) : formatNumber(value, 1);
     return `
-      <line x1="${left}" y1="${gridY}" x2="${width - right}" y2="${gridY}" stroke="#e8eff5"/>
-      <text x="${left - 9}" y="${gridY + 4}" text-anchor="end" fill="#7890a7" font-size="11">${caption}</text>`;
+      <line class="chart-grid" x1="${left}" y1="${gridY}" x2="${width - right}" y2="${gridY}"/>
+      <text class="chart-text" x="${left - 9}" y="${gridY + 4}" text-anchor="end" font-size="11">${caption}</text>`;
   }).join('');
 
   const labels = data.map((item, index) => {
     if (data.length > 8 && index % Math.ceil(data.length / 6) !== 0) return '';
-    return `<text x="${x(index)}" y="${height - 13}" text-anchor="middle" font-size="11" fill="#7d91a8">${escapeHtml(item.label)}</text>`;
+    return `<text class="chart-text" x="${x(index)}" y="${height - 13}" text-anchor="middle" font-size="11">${escapeHtml(item.label)}</text>`;
   }).join('');
 
   const area = fill
-    ? `<polygon points="${left},${height - bottom} ${points} ${x(data.length - 1)},${height - bottom}" fill="${color}" opacity=".08"/>`
+    ? `<polygon points="${left},${height - bottom} ${points} ${x(data.length - 1)},${height - bottom}" style="fill:${color}" opacity=".08"/>`
     : '';
+
+  // Half a step on each side, so a one-point band still has a width.
+  const step = (width - left - right) / Math.max(1, data.length - 1);
+  const shade = band ? `
+      <rect class="chart-band" x="${Math.max(left, x(band.from) - step / 2)}" y="${top}"
+        width="${Math.min(width - right, x(band.to) + step / 2) - Math.max(left, x(band.from) - step / 2)}" height="${height - top - bottom}"/>
+      ${band.label ? `<text class="chart-band-text" x="${(x(band.from) + x(band.to)) / 2}" y="${top + 14}" text-anchor="middle" font-size="11">${escapeHtml(band.label)}</text>` : ''}` : '';
 
   return `
     <svg class="plot" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(label || 'Time series')}" preserveAspectRatio="none">
       ${grid}
+      ${shade}
       ${area}
-      <polyline points="${points}" stroke="${color}" stroke-width="3" fill="none" stroke-linejoin="round"/>
-      ${data.map((item, index) => `<circle cx="${x(index)}" cy="${y(item.value)}" r="4" fill="${color}" stroke="white" stroke-width="1.7"/>`).join('')}
+      <polyline points="${points}" style="stroke:${color}" stroke-width="1.8" fill="none" stroke-linejoin="round"/>
+      ${data.map((item, index) => `<rect class="chart-point" x="${x(index) - 3.5}" y="${y(item.value) - 3.5}" width="7" height="7" style="stroke:${color}"/>`).join('')}
+      <line class="chart-axis" x1="${left}" y1="${height - bottom}" x2="${width - right}" y2="${height - bottom}"/>
       ${labels}
     </svg>`;
 }

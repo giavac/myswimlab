@@ -1,13 +1,13 @@
 /** Fixed application frame; each navigation action renders into #main. */
 import { state } from '../state.js';
-import { escapeHtml, icon, icons } from './shared.js';
+import { escapeHtml, icon } from './shared.js';
 
 const NAVIGATION = [
-  ['overview', 'Overview', 'home'],
-  ['sessions', 'Sessions', 'sessions'],
-  ['trends', 'Trends', 'trends'],
-  ['performance', 'Performance curve', 'curve'],
-  ['settings', 'Data & settings', 'settings']
+  ['overview', 'Overview'],
+  ['sessions', 'Sessions'],
+  ['trends', 'Trends'],
+  ['performance', 'Performance curve'],
+  ['settings', 'Data & settings']
 ];
 
 function folderStatus() {
@@ -26,9 +26,9 @@ function folderStatus() {
 
 export function layout() {
   const status = escapeHtml(folderStatus());
-  const navigation = NAVIGATION.map(([page, label, symbol]) => `
+  const navigation = NAVIGATION.map(([page, label], index) => `
     <button data-page="${page}" class="navitem ${state.page === page ? 'active' : ''}">
-      <span class="navicon">${icons[symbol]}</span>${label}
+      <span class="navnum">${String(index + 1).padStart(2, '0')}</span>${label}
     </button>`).join('');
   const periods = [
     ['7', '7D'], ['28', '4W'], ['84', '12W'], ['365', '1Y'], ['all', 'All']
@@ -41,7 +41,8 @@ export function layout() {
         <div class="logo"><div class="mark">${icon('wave', 31)}</div><span>MySwimLab</span></div>
         <div class="nav">${navigation}</div>
         <div class="asidefoot">
-          <div class="privacy">◉ &nbsp; Local-first beta</div>
+          <div class="privacy">● Processing local</div>
+          <div class="privacy-sub">No upload · No telemetry</div>
           <p>No synthetic training history. The selected FIT folder or manual import determines the displayed sessions.</p>
           <button class="asidelink" data-page="settings">Data privacy & backup ↗</button>
         </div>
@@ -50,8 +51,8 @@ export function layout() {
         <header class="topbar">
           <div class="mobilelogo">${icon('wave', 24)} MySwimLab</div>
           <div class="periods">${periods}</div>
+          <div class="statusline" title="${status}"><span class="dot">●</span> SRC ${status} · N=${state.sessions.length} · LOCAL</div>
           <div class="topactions">
-            <span class="folder-source" title="${status}">${status}</span>
             <button class="secondary" data-folder-select="true">${state.folderName ? 'Change folder' : 'Choose FIT folder'}</button>
             ${state.folderHandle ? `<button class="secondary" data-folder-refresh="true">${state.folderStatus === 'permission' ? 'Reconnect' : 'Refresh'}</button>` : ''}
             <button class="primary upload" data-upload="true">${icon('upload', 17)} <span>Import FIT</span></button>

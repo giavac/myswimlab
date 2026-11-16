@@ -9,8 +9,8 @@
  * sequence; they are stored with annotations, not in the original FIT file.
  */
 const MIN_REFERENCE_LENGTHS = 8;
-const FAST_TIME_RATIO = 0.60;
-const LOW_STROKE_RATIO = 0.65;
+export const FAST_TIME_RATIO = 0.60;
+export const LOW_STROKE_RATIO = 0.65;
 
 function median(values) {
   const sorted = [...values].sort((a, b) => a - b);
@@ -24,18 +24,30 @@ export function active(length) {
 }
 
 /**
+ * Session medians used by the automatic rule, or null when there are fewer
+ * than MIN_REFERENCE_LENGTHS active lengths with stroke counts.
+ * Returns { timePerMeter, strokes }.
+ */
+export function qualityBaseline(session) {
+  const reference = (session.lengths || []).filter(length =>
+    active(length) && Number.isFinite(length.strokes) && length.strokes > 0);
+  if (reference.length < MIN_REFERENCE_LENGTHS) return null;
+  return {
+    timePerMeter: median(reference.map(length => length.duration / length.distance)),
+    strokes: median(reference.map(length => length.strokes))
+  };
+}
+
+/**
  * Returns one result per source record, including rest markers.
  * Each result has { excluded, automatic, reason, manual }.
  * Results are deterministic, calculated only from a normalized SwimSession.
  */
 export function assessLengths(session) {
   const lengths = session.lengths || [];
-  const activeLengths = lengths.filter(active);
-  const reference = activeLengths.filter(length => Number.isFinite(length.strokes) && length.strokes > 0);
-  const baselineTime = reference.length >= MIN_REFERENCE_LENGTHS
-    ? median(reference.map(length => length.duration / length.distance)) : null;
-  const baselineStrokes = reference.length >= MIN_REFERENCE_LENGTHS
-    ? median(reference.map(length => length.strokes)) : null;
+  const baseline = qualityBaseline(session);
+  const baselineTime = baseline?.timePerMeter ?? null;
+  const baselineStrokes = baseline?.strokes ?? null;
   const overrides = session.lengthOverrides || {};
 
   return lengths.map((length, index) => {

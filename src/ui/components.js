@@ -2,31 +2,44 @@
 import {
   formatNumber, formatSeconds, formatDuration, formatDate, pace, summary
 } from '../analytics/metrics.js';
-import { icon, escapeHtml, tag } from './shared.js';
+import { icon, escapeHtml, tag, recordNumber } from './shared.js';
 import { assessLengths } from '../analytics/length-quality.js';
+import { distanceBests } from '../analytics/best-efforts.js';
+import { sortedSessions } from '../state.js';
 
-export function metric(title, valueHtml, description, iconName) {
+/** An instrument readout. `tone` 'warn' colors the description as a warning. */
+export function metric(title, valueHtml, description, tone = '') {
   return `
     <article class="metric">
-      <div class="metric-top">
-        <span>${escapeHtml(title)}</span>
-        <span class="metric-icon">${icon(iconName)}</span>
-      </div>
+      <div class="metric-top"><span>${escapeHtml(title)}</span></div>
       <strong>${valueHtml}</strong>
-      <p>${escapeHtml(description)}</p>
+      <p class="${tone === 'warn' ? 'warn' : ''}">${escapeHtml(description)}</p>
     </article>`;
 }
 
 export function metricCards(sessions) {
   const total = summary(sessions);
+  const pool = sessions.filter(session => session.sport === 'pool').length;
   return `
     <div class="metrics">
-      ${metric('Total distance', `${formatNumber(total.distance / 1000, 2)} <small>km</small>`, 'Across selected sessions', 'wave')}
-      ${metric('Sessions', formatNumber(total.sessions), 'Swimming activities from your chosen files', 'calendar')}
-      ${metric(total.excluded ? 'Filtered pace' : 'Average pace', `${formatSeconds(total.pace)} <small>/100m</small>`, total.excluded ? `${total.excluded} suspect ${total.excluded === 1 ? 'length' : 'lengths'} excluded · totals unchanged` : 'Moving time, distance weighted', 'chart')}
-      ${metric('Strokes / length', formatNumber(total.stroke, 1), 'Only available pool lengths', 'wave')}
-      ${metric('Time swimming', formatDuration(total.duration), 'Moving time', 'calendar')}
+      ${metric('Dist · total', `${formatNumber(total.distance / 1000, 2)} <small>km</small>`, `Σ ${total.sessions} ${total.sessions === 1 ? 'session' : 'sessions'}`)}
+      ${metric('Sessions', formatNumber(total.sessions), `pool ${pool} · open water ${total.sessions - pool}`)}
+      ${metric(total.excluded ? 'Pace · filtered' : 'Pace · average', `${formatSeconds(total.pace)} <small>/100m</small>`, total.excluded ? `▲ ${total.excluded} suspect ${total.excluded === 1 ? 'length' : 'lengths'} excluded · totals unchanged` : 'Moving time, distance weighted', total.excluded ? 'warn' : '')}
+      ${metric('Strokes / length', formatNumber(total.stroke, 1), total.strokeLengths ? `μ · n=${formatNumber(total.strokeLengths)} lengths` : 'No stroke data')}
+      ${metric('Swim time', formatDuration(total.duration), 'Moving time')}
     </div>`;
+}
+
+/** IDs of sessions that hold a current best for any distance, over all loaded sessions. */
+function personalBestIds() {
+  const all = sortedSessions();
+  const ids = new Set();
+  for (const unit of ['m', 'yd']) {
+    for (const effort of distanceBests(all, [25, 50, 100, 200, 400, 800, 1500], unit)) {
+      if (effort.session) ids.add(effort.session.id);
+    }
+  }
+  return ids;
 }
 
 export function emptyState(title, message) {
@@ -48,24 +61,29 @@ export function recentTable(sessions, compact = false) {
   }
 
   const visible = compact ? sessions.slice(0, 6) : sessions;
-  const rows = visible.map(session => `
+  const bests = personalBestIds();
+  const rows = visible.map(session => {
+    const suspect = assessLengths(session).filter(flag => flag.excluded).length;
+    return `
     <tr data-select="${escapeHtml(session.id)}">
       <td>${formatDate(session.date)}</td>
-      <td class="strong"><button class="session-link" data-select="${escapeHtml(session.id)}">${escapeHtml(session.title)}</button></td>
+      <td class="strong"><button class="session-link" data-select="${escapeHtml(session.id)}">${escapeHtml(session.title)}</button>${bests.has(session.id) ? ' <span class="pb-mark" title="Holds a current personal best">PB</span>' : ''}</td>
       <td>${formatNumber(session.distance)} m</td>
       <td>${formatDuration(session.duration)}</td>
       <td>${formatSeconds(pace(session))}</td>
       <td>${formatNumber(summary([session]).stroke, 1)}</td>
+      <td class="${suspect ? 'warn' : 'muted'}">${suspect ? `▲ ${suspect}` : '—'}</td>
       <td>${tag(session.source, 'real')}</td>
       <td class="arrow">›</td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 
   return `
     <div class="tablewrap">
       <table>
         <thead><tr>
-          <th>Date</th><th>Workout</th><th>Distance</th><th>Moving time</th>
-          <th>Pace /100m</th><th>Stroke count</th><th>Source</th><th></th>
+          <th>Date</th><th>Workout</th><th>Dist</th><th>Swim time</th>
+          <th>Pace /100m</th><th>Str/len</th><th title="Lengths excluded by quality control">QC</th><th>Src</th><th></th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -93,7 +111,7 @@ export function lengthTable(session) {
             aria-label="Exclude record ${index + 1} from analytics">Exclude</button>`;
     return `
       <tr id="length-${index}" class="${flag.excluded ? 'excluded-length' : ''}">
-        <td>${index + 1}</td>
+        <td>${flag.excluded ? '▲ ' : ''}${recordNumber(index)}</td>
         <td>${length.isRest ? tag('Rest') : tag('Swim', 'real')}</td>
         <td>${formatSeconds(length.duration)}</td>
         <td>${length.isRest || !length.distance ? '—' : formatSeconds(length.duration * 100 / length.distance)}</td>
@@ -106,7 +124,7 @@ export function lengthTable(session) {
   return `
     <div class="length-scroll">
       <table>
-        <thead><tr><th>#</th><th>Type</th><th>Duration</th><th>Pace</th><th>Strokes</th><th>Cadence</th><th>Quality control</th></tr></thead>
+        <thead><tr><th>Rec</th><th>Type</th><th>Duration</th><th>Pace</th><th>Strokes</th><th>Cadence</th><th>Quality control</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>`;

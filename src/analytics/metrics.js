@@ -34,6 +34,7 @@ export function summary(sessions) {
     pace: paceDistance > 0 ? paceDuration * 100 / paceDistance : null,
     excluded,
     stroke: meanStrokes,
+    strokeLengths: lengthsWithStrokes.length, // Sample size for `stroke`.
     activeLengths: activeLengths.length
   };
 }

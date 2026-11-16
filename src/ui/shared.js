@@ -6,13 +6,14 @@ export function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, character => replacements[character]);
 }
 
+/** Zero-based length index → the record number shown to users, e.g. "017". */
+export function recordNumber(index) {
+  return String(index + 1).padStart(3, '0');
+}
+
 export function tag(text, kind = '') {
   return `<span class="tag ${escapeHtml(kind)}">${escapeHtml(text)}</span>`;
 }
-
-export const icons = {
-  home: '⌂', sessions: '▤', trends: '▥', curve: '⌁', settings: '⚙'
-};
 
 export function icon(name, size = 20) {
   const paths = {
