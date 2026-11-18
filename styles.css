@@ -392,6 +392,9 @@ tbody tr[data-select]:hover { background: var(--accent-soft); }
 
 .info { color: var(--ink); }
 .info p { margin: 6px 0 0; color: var(--ink-2); font-size: 13px; }
+.interval-summary { font-size: 15px; font-weight: 500; margin: 0 0 12px; }
+.interval-row.set-start td { border-top: 1px solid var(--line-strong); }
+.set-name { color: var(--accent); font-weight: 500; }
 .fineprint { font-size: 11px !important; color: var(--ink-3); line-height: 1.6; margin-top: 12px; }
 .hint { color: var(--ink-3); font-size: 13px; padding: 32px; }
 

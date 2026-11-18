@@ -5,6 +5,7 @@ import {
 import { icon, escapeHtml, tag, recordNumber } from './shared.js';
 import { assessLengths } from '../analytics/length-quality.js';
 import { distanceBests } from '../analytics/best-efforts.js';
+import { intervals, intervalSets } from '../analytics/intervals.js';
 import { sortedSessions } from '../state.js';
 
 /** An instrument readout. `tone` 'warn' colors the description as a warning. */
@@ -128,6 +129,36 @@ export function lengthTable(session) {
         <tbody>${rows}</tbody>
       </table>
     </div>`;
+}
+
+/** Workout structure (e.g. "5 × 200 m · 100 m") and one row per interval. */
+export function intervalTable(session) {
+  const sets = intervalSets(intervals(session));
+  if (!sets.length) return '';
+
+  const unit = escapeHtml(session.poolUnit || 'm');
+  const pool = session.poolUnit === 'yd' ? session.poolMeters / 0.9144 : session.poolMeters;
+  const distance = interval => interval.lengths * pool;
+  const setName = set => `${set.intervals.length > 1 ? `${set.intervals.length} × ` : ''}${formatNumber(distance(set.intervals[0]))} ${unit}`;
+
+  const rows = sets.map(set => set.intervals.map((interval, position) => `
+      <tr class="interval-row${position === 0 ? ' set-start' : ''}">
+        <td class="set-name">${position === 0 ? setName(set) : ''}</td>
+        <td>${position + 1}</td>
+        <td>${formatNumber(distance(interval))} ${unit}</td>
+        <td>${formatSeconds(interval.duration)}</td>
+        <td>${formatSeconds(interval.duration * 100 / distance(interval))}</td>
+        <td>${formatNumber(interval.strokes)}</td>
+        <td>${formatSeconds(interval.rest)}</td>
+        <td>${interval.rest === null ? '—' : formatSeconds(interval.duration + interval.rest)}</td>
+      </tr>`).join('')).join('');
+
+  return `
+    <p class="interval-summary">${sets.map(setName).join(' · ')}</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Set</th><th>#</th><th>Dist</th><th>Time</th><th>Pace /100${unit}</th><th>Strokes</th><th>Rest after</th><th>Restart after</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
 }
 
 export function sessionInsight(sessions) {

@@ -2,8 +2,9 @@
 import { selectedSession, sortedSessions, state } from '../state.js';
 import { distanceBests } from '../analytics/best-efforts.js';
 import { lengthDrift, pace, formatNumber, formatSeconds, formatDuration, formatDate } from '../analytics/metrics.js';
+import { intervals } from '../analytics/intervals.js';
 import { lineChart } from './charts.js';
-import { emptyState, lengthTable, metric } from './components.js';
+import { emptyState, intervalTable, lengthTable, metric } from './components.js';
 import { escapeHtml, tag, recordNumber } from './shared.js';
 import {
   active, assessLengths, paceTotals, qualityBaseline, FAST_TIME_RATIO, LOW_STROKE_RATIO
@@ -88,6 +89,13 @@ export function sessionPage() {
     ${hasRestExcluded && session.restDuration > 0 && Number.isFinite(session.timerDuration) &&
       Math.abs(session.duration + session.restDuration - session.timerDuration) < 1 ? `
       <p class="fineprint">Swimming ${formatDuration(session.duration)} + recorded rest ${formatDuration(session.restDuration)} = FIT timer ${formatDuration(session.timerDuration)}.</p>
+    ` : ''}
+
+    ${session.sport === 'pool' && lengths.some(active) ? `
+      <section class="panel" aria-label="Intervals">
+        <div class="panelhead"><div><h2>Intervals</h2><p>Lengths between rest markers · as recorded · sets group consecutive equal distances</p></div><span class="fig">${intervals(session).length} INTERVALS</span></div>
+        ${intervalTable(session)}
+      </section>
     ` : ''}
 
     ${personalBests.length ? `

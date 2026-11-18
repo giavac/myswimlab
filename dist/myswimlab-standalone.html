@@ -399,6 +399,9 @@ tbody tr[data-select]:hover { background: var(--accent-soft); }
 
 .info { color: var(--ink); }
 .info p { margin: 6px 0 0; color: var(--ink-2); font-size: 13px; }
+.interval-summary { font-size: 15px; font-weight: 500; margin: 0 0 12px; }
+.interval-row.set-start td { border-top: 1px solid var(--line-strong); }
+.set-name { color: var(--accent); font-weight: 500; }
 .fineprint { font-size: 11px !important; color: var(--ink-3); line-height: 1.6; margin-top: 12px; }
 .hint { color: var(--ink-3); font-size: 13px; padding: 32px; }
 
@@ -1577,6 +1580,36 @@ function lengthTable(session) {
     </div>`;
 }
 
+/** Workout structure (e.g. "5 × 200 m · 100 m") and one row per interval. */
+function intervalTable(session) {
+  const sets = intervalSets(intervals(session));
+  if (!sets.length) return '';
+
+  const unit = escapeHtml(session.poolUnit || 'm');
+  const pool = session.poolUnit === 'yd' ? session.poolMeters / 0.9144 : session.poolMeters;
+  const distance = interval => interval.lengths * pool;
+  const setName = set => `${set.intervals.length > 1 ? `${set.intervals.length} × ` : ''}${formatNumber(distance(set.intervals[0]))} ${unit}`;
+
+  const rows = sets.map(set => set.intervals.map((interval, position) => `
+      <tr class="interval-row${position === 0 ? ' set-start' : ''}">
+        <td class="set-name">${position === 0 ? setName(set) : ''}</td>
+        <td>${position + 1}</td>
+        <td>${formatNumber(distance(interval))} ${unit}</td>
+        <td>${formatSeconds(interval.duration)}</td>
+        <td>${formatSeconds(interval.duration * 100 / distance(interval))}</td>
+        <td>${formatNumber(interval.strokes)}</td>
+        <td>${formatSeconds(interval.rest)}</td>
+        <td>${interval.rest === null ? '—' : formatSeconds(interval.duration + interval.rest)}</td>
+      </tr>`).join('')).join('');
+
+  return `
+    <p class="interval-summary">${sets.map(setName).join(' · ')}</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Set</th><th>#</th><th>Dist</th><th>Time</th><th>Pace /100${unit}</th><th>Strokes</th><th>Rest after</th><th>Restart after</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+}
+
 function sessionInsight(sessions) {
   if (sessions.length < 2) return 'Add more sessions with valid distance and duration to explore pace changes.';
 
@@ -1822,6 +1855,13 @@ function sessionPage() {
     ${hasRestExcluded && session.restDuration > 0 && Number.isFinite(session.timerDuration) &&
       Math.abs(session.duration + session.restDuration - session.timerDuration) < 1 ? `
       <p class="fineprint">Swimming ${formatDuration(session.duration)} + recorded rest ${formatDuration(session.restDuration)} = FIT timer ${formatDuration(session.timerDuration)}.</p>
+    ` : ''}
+
+    ${session.sport === 'pool' && lengths.some(active) ? `
+      <section class="panel" aria-label="Intervals">
+        <div class="panelhead"><div><h2>Intervals</h2><p>Lengths between rest markers · as recorded · sets group consecutive equal distances</p></div><span class="fig">${intervals(session).length} INTERVALS</span></div>
+        ${intervalTable(session)}
+      </section>
     ` : ''}
 
     ${personalBests.length ? `
