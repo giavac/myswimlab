@@ -4,8 +4,12 @@ import { distanceBests } from '../analytics/best-efforts.js';
 import { lengthDrift, pace, formatNumber, formatSeconds, formatDuration, formatDate } from '../analytics/metrics.js';
 import { lineChart } from './charts.js';
 import { emptyState, lengthTable, metric } from './components.js';
-import { escapeHtml, tag } from './shared.js';
-import { active, assessLengths, paceTotals } from '../analytics/length-quality.js';
+import { escapeHtml, tag, recordNumber } from './shared.js';
+import {
+  active, assessLengths, paceTotals, qualityBaseline, FAST_TIME_RATIO, LOW_STROKE_RATIO
+} from '../analytics/length-quality.js';
+
+const percent = ratio => `${Math.round(ratio * 100)}%`;
 
 export function sessionPage() {
   const session = selectedSession();
@@ -21,7 +25,7 @@ export function sessionPage() {
   const quality = assessLengths(session);
   const excluded = quality.map((flag, index) => flag.excluded ? index : -1).filter(index => index >= 0);
   // Chart labels use the record number from the length table, not a new count.
-  const shown = lengths.map((length, index) => ({ length, record: String(index + 1) }))
+  const shown = lengths.map((length, index) => ({ length, index, record: recordNumber(index) }))
     .filter(({ length }, index) => active(length) && !quality[index].excluded);
   const totals = paceTotals(session);
   const paceByLength = shown.map(({ length, record }) => ({
@@ -45,6 +49,17 @@ export function sessionPage() {
       .filter(effort => effort.session?.id === session.id)
     : [];
   const unitHtml = escapeHtml(unit);
+  // Shade the longest PB segment on the pace chart. Its lengths are all shown,
+  // because a best effort cannot contain a rest or an excluded length.
+  const longestBest = personalBests[personalBests.length - 1];
+  const bandPoints = longestBest
+    ? shown.map(({ index }, point) => index >= longestBest.start && index <= longestBest.end ? point : -1)
+      .filter(point => point >= 0)
+    : [];
+  const band = bandPoints.length
+    ? { from: bandPoints[0], to: bandPoints[bandPoints.length - 1], label: `PB ${longestBest.distance} ${unit}` }
+    : null;
+  const baseline = qualityBaseline(session);
   const removeButton = state.sourceMode === 'manual'
     ? `<button class="danger-lite" data-delete="${escapeHtml(session.id)}">Remove session</button>`
     : '';
@@ -52,10 +67,10 @@ export function sessionPage() {
   return `
     <div class="pagehead">
       <div>
-        <div class="breadcrumb">SESSIONS / ${formatDate(session.date)}</div>
+        <div class="breadcrumb">LAB / 02 / SESSION / ${formatDate(session.date)}</div>
         <h1>${escapeHtml(session.title)}</h1>
         <p>${formatDate(session.date)} · ${swimType} · ${escapeHtml(session.source)} data</p>
-        ${personalBests.length ? tag('Personal best', 'real') : ''}
+        ${personalBests.length ? tag(`◆ Personal best × ${personalBests.length}`, 'pb') : ''}
       </div>
       <div class="pageactions">
         ${removeButton}
@@ -64,10 +79,10 @@ export function sessionPage() {
     </div>
 
     <div class="metrics four">
-      ${metric('Distance', `${formatNumber(session.distance)} <small>m</small>`, 'Recorded or reconstructed', 'wave')}
-      ${metric(hasRestExcluded ? 'Swimming time' : 'Timer time', formatDuration(session.duration), movingTimeDescription, 'calendar')}
-      ${metric(correctedPace ? 'Filtered pace' : 'Average pace', `${formatSeconds(pace(session))} <small>/100m</small>`, correctedPace ? `${totals.excluded} suspect ${totals.excluded === 1 ? 'length' : 'lengths'} omitted` : 'Moving pace', 'chart')}
-      ${metric('Length drift', drift === null ? '—' : `${drift >= 0 ? '+' : ''}${drift.toFixed(1)}%`, 'Stroke count: last vs first quarter', 'wave')}
+      ${metric('Distance', `${formatNumber(session.distance)} <small>m</small>`, session.sport === 'pool' ? `${lengths.filter(active).length} lengths · as recorded` : 'Recorded or reconstructed')}
+      ${metric(hasRestExcluded ? 'Swim time' : 'Timer time', formatDuration(session.duration), movingTimeDescription)}
+      ${metric(correctedPace ? 'Pace · filtered' : 'Pace · average', `${formatSeconds(pace(session))} <small>/100m</small>`, correctedPace ? `▲ ${totals.excluded} suspect ${totals.excluded === 1 ? 'length' : 'lengths'} omitted` : 'Moving pace', correctedPace ? 'warn' : '')}
+      ${metric('Δ Stroke drift', drift === null ? '—' : `${drift >= 0 ? '+' : ''}${drift.toFixed(1)} <small>%</small>`, 'Stroke count: last ¼ vs first ¼')}
     </div>
 
     ${hasRestExcluded && session.restDuration > 0 && Number.isFinite(session.timerDuration) &&
@@ -76,22 +91,36 @@ export function sessionPage() {
     ` : ''}
 
     ${personalBests.length ? `
-      <section class="panel info" aria-label="Personal bests">
-        <b>Personal best: ${personalBests.length} ${personalBests.length === 1 ? 'distance' : 'distances'}</b>
+      <section class="panel pb-panel" aria-label="Personal bests">
+        <b class="panel-label">◆ Personal best · ${personalBests.length} ${personalBests.length === 1 ? 'distance' : 'distances'}</b>
         <p>Fastest continuous segment among all loaded sessions. Suspect lengths are excluded.</p>
-        <ul>${personalBests.map(effort => `
-          <li>${effort.distance} ${unitHtml}: ${formatSeconds(effort.time)}
-            (${formatSeconds(effort.time * 100 / effort.distance)}/100${unitHtml}) ·
-            ${effort.start === effort.end ? `record ${effort.start + 1}` : `records ${effort.start + 1}–${effort.end + 1}`}</li>`).join('')}
-        </ul>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Dist</th><th>Time</th><th>Pace /100${unitHtml}</th><th>Records</th></tr></thead>
+          <tbody>${personalBests.map(effort => `
+            <tr><td class="pb-dist">${effort.distance} ${unitHtml}</td><td>${formatSeconds(effort.time)}</td>
+              <td>${formatSeconds(effort.time * 100 / effort.distance)}</td>
+              <td>${effort.start === effort.end ? `REC ${recordNumber(effort.start)}` : `REC ${recordNumber(effort.start)}–${recordNumber(effort.end)}`}</td></tr>`).join('')}
+          </tbody>
+        </table></div>
       </section>
     ` : ''}
 
     ${excluded.length ? `
       <section class="panel quality-panel" aria-label="Swimming length data quality">
-        <b>Data quality: ${excluded.length} ${excluded.length === 1 ? 'length' : 'lengths'} excluded from pace analytics and best efforts</b>
-        <p>Original FIT distance, swimming time, and rest records are unchanged. The app flags only very fast lengths with unusually few strokes. You can override each decision.</p>
-        <p>${excluded.map(index => `<button class="quality-jump" data-jump-length="${index}">Review record #${index + 1} (${formatSeconds(lengths[index].duration)}, ${formatNumber(lengths[index].strokes)} strokes)</button>`).join(' ')}</p>
+        <b class="panel-label">▲ Data quality · ${excluded.length} ${excluded.length === 1 ? 'length' : 'lengths'} excluded</b>
+        <p>Excluded from pace analytics and best efforts. Original FIT distance, swimming time, and rest records are unchanged. You can override each decision.</p>
+        <p class="rule">Rule: pace &lt; ${percent(FAST_TIME_RATIO)} of median AND strokes &lt; ${percent(LOW_STROKE_RATIO)} of median.
+          ${baseline ? `Session median: ${formatSeconds(baseline.timePerMeter * session.poolMeters)} · ${formatNumber(baseline.strokes, 1)} strokes per length.` : 'Not enough lengths with strokes for a median; only manual decisions apply.'}</p>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Rec</th><th>Duration</th><th>Strokes</th><th>Decision</th><th></th></tr></thead>
+          <tbody>${excluded.map(index => `
+            <tr><td class="warn">▲ ${recordNumber(index)}</td>
+              <td>${formatSeconds(lengths[index].duration)}${baseline ? ` <span class="muted">/ ${formatSeconds(baseline.timePerMeter * lengths[index].distance)}</span>` : ''}</td>
+              <td>${formatNumber(lengths[index].strokes)}${baseline ? ` <span class="muted">/ ${formatNumber(baseline.strokes, 1)}</span>` : ''}</td>
+              <td>${quality[index].manual === 'exclude' ? 'Manual' : 'Automatic'}</td>
+              <td><button class="quality-jump" data-jump-length="${index}">Review REC ${recordNumber(index)}</button></td></tr>`).join('')}
+          </tbody>
+        </table></div>
       </section>
     ` : ''}
 
@@ -102,18 +131,18 @@ export function sessionPage() {
 
     <div class="twocol">
       <section class="panel">
-        <div class="panelhead"><div><h2>Pace by length</h2><p>Seconds per 100 m · excluded lengths omitted</p></div></div>
-        ${lineChart(paceByLength, { unit: 'pace', label: 'Pace per length' })}
+        <div class="panelhead"><div><h2>Pace by length</h2><p>Seconds per 100 m · excluded lengths omitted · x: REC</p></div><span class="fig">FIG.1 · S /100M</span></div>
+        ${lineChart(paceByLength, { unit: 'pace', label: 'Pace per length', band })}
       </section>
       <section class="panel">
-        <div class="panelhead"><div><h2>Strokes per length</h2><p>As counted by the watch · excluded lengths omitted</p></div></div>
-        ${lineChart(strokesByLength, { color: '#0b9a9a', label: 'Strokes per length' })}
+        <div class="panelhead"><div><h2>Strokes per length</h2><p>As counted by the watch · excluded lengths omitted · x: REC</p></div><span class="fig">FIG.2 · COUNT</span></div>
+        ${lineChart(strokesByLength, { label: 'Strokes per length' })}
       </section>
     </div>
 
     <div class="twocol unequal">
       <section class="panel">
-        <div class="panelhead"><div><h2>Recorded lengths</h2><p>Rest markers appear as separate entries</p></div><span class="muted">${lengths.length} records</span></div>
+        <div class="panelhead"><div><h2>Recorded lengths</h2><p>Rest markers appear as separate entries</p></div><span class="fig">${lengths.length} RECORDS · ${lengths.filter(length => length.isRest).length} REST</span></div>
         ${lengthTable(session)}
       </section>
       <section class="panel">

@@ -6,7 +6,7 @@ import { lineChart } from './charts.js';
 import { metricCards } from './components.js';
 import { escapeHtml } from './shared.js';
 
-function effortGroup(sessions, unit) {
+function effortGroup(sessions, unit, figure) {
   const targets = [25, 50, 100, 200, 400, 800, 1500];
   const efforts = distanceBests(sessions, targets, unit);
   const curve = efforts.filter(effort => effort.time !== null).map(effort => ({
@@ -24,7 +24,7 @@ function effortGroup(sessions, unit) {
   return `
     <section class="panel">
       <div class="panelhead"><div><h2>Best pace — ${unit === 'yd' ? 'yards' : 'meters'}</h2>
-        <p>Seconds / 100${unitHtml} · lower is faster</p></div></div>
+        <p>Seconds / 100${unitHtml} · lower is faster</p></div><span class="fig">FIG.${figure} · S /100${unitHtml.toUpperCase()}</span></div>
       ${lineChart(curve, { unit: 'pace', label: `Best pace per 100${unit}` })}
       <div class="tablewrap"><table>
         <thead><tr><th>Distance</th><th>Best time</th><th>Pace /100${unitHtml}</th><th>Session</th></tr></thead>
@@ -38,10 +38,10 @@ export function performancePage(sessions) {
     .map(s => s.poolUnit || 'm'))];
   const shownUnits = units.length ? units : ['m'];
   return `
-    <div class="pagehead"><div><h1>Performance curve</h1>
+    <div class="pagehead"><div><div class="eyebrow">LAB / 04 / PERFORMANCE</div><h1>Performance curve</h1>
       <p>Best continuous training efforts; suspect lengths excluded; meters and yards kept separate.</p>
     </div></div>
-    ${shownUnits.map(unit => effortGroup(sessions, unit)).join('')}
+    ${shownUnits.map((unit, index) => effortGroup(sessions, unit, index + 1)).join('')}
     <p class="fineprint">Different strokes, drills or equipment may not be comparable. Yard pace is /100yd.</p>`;
 }
 
@@ -57,16 +57,16 @@ export function trendsPage(sessions) {
   })).filter(point => Number.isFinite(point.value));
 
   return `
-    <div class="pagehead"><div><h1>Training trends</h1><p>Track changes across sessions, with context.</p></div></div>
+    <div class="pagehead"><div><div class="eyebrow">LAB / 03 / TRENDS</div><h1>Training trends</h1><p>Track changes across sessions, with context.</p></div></div>
     ${metricCards(sessions)}
     <div class="twocol">
       <section class="panel">
-        <div class="panelhead"><div><h2>Session distance</h2><p>Distance in km</p></div></div>
+        <div class="panelhead"><div><h2>Session distance</h2><p>Distance in km</p></div><span class="fig">FIG.1 · KM</span></div>
         ${lineChart(distanceTrend, { unit: 'km', fill: true })}
       </section>
       <section class="panel">
-        <div class="panelhead"><div><h2>Stroke-count trend</h2><p>Unadjusted mean across recorded active lengths</p></div></div>
-        ${lineChart(strokeTrend, { color: '#0a9b9a' })}
+        <div class="panelhead"><div><h2>Stroke-count trend</h2><p>Unadjusted mean across recorded active lengths</p></div><span class="fig">FIG.2 · STROKES / LENGTH</span></div>
+        ${lineChart(strokeTrend, { label: 'Mean strokes per pool length' })}
       </section>
     </div>
     <div class="panel info"><b>Interpretation caution</b>
@@ -81,7 +81,7 @@ export function settingsPage() {
     <button class="danger-lite" data-folder-forget="true">Forget folder</button>` : '';
 
   return `
-    <div class="pagehead"><div><h1>Data & settings</h1><p>Local FIT analysis without cloud synchronization.</p></div></div>
+    <div class="pagehead"><div><div class="eyebrow">LAB / 05 / DATA</div><h1>Data & settings</h1><p>Local FIT analysis without cloud synchronization.</p></div></div>
     <div class="twocol">
       <section class="panel">
         <h2>FIT source folder</h2>

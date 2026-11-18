@@ -4,6 +4,7 @@ import { recentTable } from './components.js';
 export function sessionsPage(sessions) {
   return `
     <div class="pagehead"><div>
+      <div class="eyebrow">LAB / 02 / SESSIONS</div>
       <h1>All sessions</h1>
       <p>${sessions.length} swimming activity/activities in the selected time period.</p>
     </div></div>

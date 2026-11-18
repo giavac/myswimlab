@@ -4,7 +4,7 @@ import { distanceBests } from '../analytics/best-efforts.js';
 import { pace, summary, weekVolumes, formatDate, formatNumber, formatSeconds } from '../analytics/metrics.js';
 import { barChart, lineChart } from './charts.js';
 import { metricCards, emptyState, recentTable, sessionInsight } from './components.js';
-import { escapeHtml, icon, tag } from './shared.js';
+import { escapeHtml, tag } from './shared.js';
 
 function emptyMessage() {
   switch (state.folderStatus) {
@@ -26,19 +26,24 @@ function bestEffortsPanel(sessions) {
   const units = [...new Set(sessions.filter(session => session.sport === 'pool')
     .map(session => session.poolUnit || 'm'))];
   const groups = units.length ? units : ['m'];
+  // "NEW" marks a best set in the most recent session of this view.
+  const latestId = [...sessions].sort((a, b) => b.date.localeCompare(a.date))[0]?.id;
   const tiles = groups.map(unit => {
     const efforts = distanceBests(sessions, [25, 50, 100, 200, 400, 800], unit);
     const unitHtml = escapeHtml(unit);
     return `<div class="effort-group">
       ${groups.length > 1 ? `<h3>${unit === 'yd' ? 'Yard pool' : 'Meter pool'}</h3>` : ''}
-      <div class="bests">${efforts.map(effort => `
-        <div class="besttile">
-          <span>${effort.distance} ${unitHtml}</span>
+      <div class="bests">${efforts.map(effort => {
+        const isNew = effort.session && effort.session.id === latestId;
+        return `
+        <div class="besttile${isNew ? ' new' : ''}">
+          <span>${effort.distance} ${unitHtml}${isNew ? ' · NEW' : ''}</span>
           <strong>${formatSeconds(effort.time)}</strong>
           <small>${effort.session
             ? `<span class="best-pace">${formatSeconds(effort.time * 100 / effort.distance)}/100${unitHtml}</span> · ${formatDate(effort.session.date, { month: 'short', day: 'numeric' })}`
             : 'No continuous segment recorded'}</small>
-        </div>`).join('')}</div></div>`;
+        </div>`;
+      }).join('')}</div></div>`;
   }).join('');
   return `<section class="panel">
     <div class="panelhead">
@@ -74,7 +79,7 @@ export function overview(sessions) {
   return `
     <div class="pagehead">
       <div>
-        <div class="eyebrow">SWIMMING ANALYTICS / PERSONAL TRAINING HISTORY</div>
+        <div class="eyebrow">LAB / 01 / OVERVIEW</div>
         <h1>Swimming overview</h1>
         <p>Understand your swimming, not just your distance.</p>
       </div>
@@ -84,19 +89,19 @@ export function overview(sessions) {
 
     <div class="twocol leadcharts">
       <section class="panel">
-        <div class="panelhead"><div><h2>Training volume</h2><p>Weekly swimming distance · kilometers</p></div><span class="panel-icon">${icon('chart', 19)}</span></div>
+        <div class="panelhead"><div><h2>Training volume</h2><p>Weekly swimming distance · kilometers</p></div><span class="fig">FIG.1 · KM / WEEK</span></div>
         ${barChart(volumes)}
       </section>
       <section class="panel">
-        <div class="panelhead"><div><h2>Average pace progression</h2><p>Session-average moving pace · suspect lengths excluded · lower is faster</p></div><span class="panel-icon">${icon('wave', 19)}</span></div>
-        ${lineChart(paceTrend, { unit: 'pace', color: '#168fa6', label: 'Average pace per session' })}
+        <div class="panelhead"><div><h2>Average pace progression</h2><p>Session-average moving pace · suspect lengths excluded · lower is faster</p></div><span class="fig">FIG.2 · S /100M · ↓ FASTER</span></div>
+        ${lineChart(paceTrend, { unit: 'pace', label: 'Average pace per session' })}
       </section>
     </div>
 
     <div class="twocol unequal">
       ${bestEffortsPanel(sessions)}
       <section class="panel insight">
-        <div class="panelhead"><div><h2>What your data says</h2><p>Descriptive findings from your imported history</p></div><span class="spark">✦</span></div>
+        <div class="panelhead"><div><h2>What your data says</h2><p>Descriptive findings from your imported history</p></div><span class="fig">OBSERVATION</span></div>
         <div class="insight-body">${sessionInsight(sessions)}</div>
         <button class="subtle insight-link" data-page="trends">Explore training trends →</button>
       </section>
@@ -104,8 +109,8 @@ export function overview(sessions) {
 
     <div class="twocol lowercharts">
       <section class="panel">
-        <div class="panelhead"><div><h2>Stroke count across sessions</h2><p>Mean strokes per active pool length · unadjusted</p></div><span class="panel-icon">${icon('wave', 19)}</span></div>
-        ${lineChart(strokeTrend, { color: '#139f9c', label: 'Mean strokes per pool length' })}
+        <div class="panelhead"><div><h2>Stroke count across sessions</h2><p>Mean strokes per active pool length · unadjusted</p></div><span class="fig">FIG.3 · STROKES / LENGTH</span></div>
+        ${lineChart(strokeTrend, { label: 'Mean strokes per pool length' })}
       </section>
       <section class="panel nextstep">
         <div class="panelhead"><div><h2>Zoom into a workout</h2><p>Individual length data is where swimming becomes interesting</p></div></div>

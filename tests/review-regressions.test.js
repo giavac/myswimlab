@@ -10,10 +10,11 @@ import { sessionsPage } from '../src/ui/sessions-list.js';
 import { makeFit } from './fit-fixture.js';
 import { state } from '../src/state.js';
 import { performancePage } from '../src/ui/other-pages.js';
-import { overview } from '../src/ui/overview.js';
 import { sessionPage } from '../src/ui/session-detail.js';
 import { summary } from '../src/analytics/metrics.js';
 import { layout } from '../src/ui/layout.js';
+import { overview } from '../src/ui/overview.js';
+import { qualityBaseline } from '../src/analytics/length-quality.js';
 
 const arrayBuffer = bytes => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
 const parse = opts => parseFit(arrayBuffer(makeFit(opts)), 'swim.fit');
@@ -187,10 +188,10 @@ test('length charts label points with the record number from the length table', 
   const session = parse({ durations: [23, 24, 22], restAfter: [0] });
   state.sessions = [session];
   state.selectedSessionId = session.id;
-  const labels = [...sessionPage().matchAll(/font-size="11" fill="#7d91a8">(\d+)<\/text>/g)]
+  const labels = [...sessionPage().matchAll(/text-anchor="middle" font-size="11">(\d+)<\/text>/g)]
     .map(match => match[1]);
-  // Record 2 is the rest marker, so the pace and stroke charts show 1, 3, 4.
-  assert.deepEqual(labels, ['1', '3', '4', '1', '3', '4']);
+  // Record 2 is the rest marker, so the pace and stroke charts show 001, 003, 004.
+  assert.deepEqual(labels, ['001', '003', '004', '001', '003', '004']);
 });
 
 test('the swimming + rest = timer line shows only when the values add up', () => {
@@ -219,16 +220,16 @@ test('session analysis marks only distances where the session holds the current 
 
   state.selectedSessionId = fast.id;
   const fastHtml = sessionPage();
-  assert.match(fastHtml, /Personal best: 3 distances/);
-  assert.ok(fastHtml.includes('100 m: 1:20'));
-  assert.ok(!fastHtml.includes('200 m:'));
+  assert.match(fastHtml, /Personal best · 3 distances/);
+  assert.ok(fastHtml.includes('<td class="pb-dist">100 m</td><td>1:20</td>'));
+  assert.ok(!fastHtml.includes('pb-dist">200 m'));
 
   state.selectedSessionId = slow.id;
   const slowHtml = sessionPage();
-  assert.match(slowHtml, /Personal best: 1 distance</);
-  assert.ok(slowHtml.includes('200 m: 3:20'));
-  assert.ok(slowHtml.includes('records 1–8'));
-  assert.ok(!slowHtml.includes('25 m:'));
+  assert.match(slowHtml, /Personal best · 1 distance</);
+  assert.ok(slowHtml.includes('<td class="pb-dist">200 m</td><td>3:20</td>'));
+  assert.ok(slowHtml.includes('REC 001–008'));
+  assert.ok(!slowHtml.includes('pb-dist">25 m'));
   state.period = 'all';
 });
 
@@ -237,9 +238,8 @@ test('personal-best record numbers match the length table across a rest', () => 
   state.sessions = [session];
   state.selectedSessionId = session.id;
   const html = sessionPage();
-  assert.ok(html.includes('25 m: 0:20'));
-  assert.match(html, /25 m: 0:20[\s\S]*?record 3</);
-  assert.match(html, /50 m: 0:41[\s\S]*?records 3–4</);
+  assert.match(html, /pb-dist">25 m<\/td><td>0:20<\/td>[\s\S]*?REC 003</);
+  assert.match(html, /pb-dist">50 m<\/td><td>0:41<\/td>[\s\S]*?REC 003–004</);
 });
 
 test('a session without a personal best has no badge', () => {
@@ -252,4 +252,61 @@ test('a session without a personal best has no badge', () => {
 
 test('the footer links to the GitHub issue form in a new tab', () => {
   assert.match(layout(), /<footer>[\s\S]*<a href="https:\/\/github\.com\/giavac\/myswimlab\/issues\/new" target="_blank" rel="noopener">Report an issue<\/a>[\s\S]*<\/footer>/);
+});
+
+/** Ten 30 s lengths with 20..29 strokes; record 005 is made suspect (12 s, 5 strokes). */
+function sessionWithSuspect() {
+  const session = parse({ durations: Array(10).fill(30) });
+  session.lengths[4] = { ...session.lengths[4], duration: 12, strokes: 5 };
+  return session;
+}
+
+test('quality baseline gives the session medians, or null with too few lengths', () => {
+  const baseline = qualityBaseline(sessionWithSuspect());
+  assert.equal(baseline.timePerMeter, 1.2);
+  assert.equal(baseline.strokes, 24);
+  assert.equal(qualityBaseline(parse({ durations: Array(7).fill(30) })), null);
+});
+
+test('summary reports the stroke sample size', () => {
+  assert.equal(summary([parse({})]).strokeLengths, 4);
+});
+
+test('data-quality panel shows the rule, the medians and the record ID', () => {
+  const session = sessionWithSuspect();
+  state.sessions = [session];
+  state.selectedSessionId = session.id;
+  const html = sessionPage();
+  assert.ok(html.includes('Rule: pace &lt; 60% of median AND strokes &lt; 65% of median.'));
+  assert.ok(html.includes('Session median: 0:30 · 24 strokes per length.'));
+  assert.match(html, /<td class="warn">▲ 005<\/td>\s*<td>0:12 <span class="muted">\/ 0:30<\/span><\/td>/);
+  assert.ok(html.includes('>Automatic<'));
+  assert.ok(html.includes('Review REC 005'));
+});
+
+test('the pace chart shades the longest personal-best segment', () => {
+  const session = parse({ durations: Array(8).fill(25) });
+  state.sessions = [session];
+  state.selectedSessionId = session.id;
+  const html = sessionPage();
+  assert.equal((html.match(/class="chart-band"/g) || []).length, 1);
+  assert.ok(html.includes('>PB 200 m</text>'));
+});
+
+test('overview marks new bests, PB holders and suspect counts', () => {
+  const latest = { ...parse({ durations: [20, 20, 20, 20] }), date: '2026-11-10T08:00:00.000Z' };
+  const older = { ...sessionWithSuspect(), date: '2026-11-01T08:00:00.000Z' };
+  state.sessions = [latest, older];
+  const html = overview([latest, older]);
+  assert.ok(html.includes('100 m · NEW'));
+  assert.ok(!html.includes('200 m · NEW'));
+  const rows = html.split('<tr data-select=').slice(1);
+  assert.match(rows[0], /class="pb-mark"/);
+  assert.match(rows[0], /<td class="muted">—<\/td>/);
+  assert.match(rows[1], /<td class="warn">▲ 1<\/td>/);
+});
+
+test('the top bar shows a status line with the session count', () => {
+  state.sessions = [parse({})];
+  assert.match(layout(), /class="statusline"[^>]*>.*N=1 · LOCAL<\/div>/);
 });
