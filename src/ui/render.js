@@ -5,7 +5,7 @@ import { layout } from './layout.js';
 import { overview } from './overview.js';
 import { sessionPage } from './session-detail.js';
 import { sessionsPage } from './sessions-list.js';
-import { performancePage, trendsPage, settingsPage } from './other-pages.js';
+import { performancePage, trendsPage, settingsPage, trainingGuidePage } from './other-pages.js';
 
 export function render() {
   const previousFocus = document.activeElement;
@@ -19,8 +19,9 @@ export function render() {
     sessions: () => sessionsPage(list),
     'session-detail': () => sessionPage(),
     performance: () => performancePage(list),
-    trends: () => trendsPage(list, state.weeklyGoal),
-    settings: () => settingsPage()
+    trends: () => trendsPage(list, state.weeklyGoal, state.referencePaces),
+    settings: () => settingsPage(),
+    guide: () => trainingGuidePage()
   };
 
   query('#main').innerHTML = (pages[state.page] || pages.overview)();

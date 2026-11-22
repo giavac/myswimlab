@@ -5,6 +5,7 @@ export const state = {
   selectedSessionId: null,
   period: 'all',
   weeklyGoal: null,
+  referencePaces: { m: null, yd: null },
   drafts: new Map()
 };
 

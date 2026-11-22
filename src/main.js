@@ -14,6 +14,7 @@ import { query } from './ui/shared.js';
 import { render, toast, downloadJson } from './ui/render.js';
 
 const WEEKLY_GOAL_KEY = 'myswimlab.weekly-goal';
+const REFERENCE_PACES_KEY = 'myswimlab.reference-paces';
 
 let importGeneration = 0;
 
@@ -204,7 +205,39 @@ function parseWeeklyGoal(value) {
   return Number.isSafeInteger(goal) && goal > 0 ? goal : null;
 }
 
+function parseReferencePace(value) {
+  const match = /^(\d+):([0-5]\d)$/.exec(value);
+  if (!match) return null;
+  const seconds = Number(match[1]) * 60 + Number(match[2]);
+  return Number.isSafeInteger(seconds) && seconds > 0 ? seconds : null;
+}
+
+function saveReferencePaces() {
+  const drafts = { m: query('#referencePace-m').value, yd: query('#referencePace-yd').value };
+  const paces = { m: parseReferencePace(drafts.m), yd: parseReferencePace(drafts.yd) };
+  if (Object.keys(drafts).some(unit => drafts[unit] !== '' && paces[unit] === null)) {
+    toast('Enter a reference pace greater than 0:00 in minutes:seconds.');
+    return;
+  }
+
+  state.referencePaces = paces;
+  let message = 'Reference paces saved.';
+  try {
+    localStorage.setItem(REFERENCE_PACES_KEY, JSON.stringify(paces));
+  } catch {
+    message = 'Browser storage is unavailable. Your reference paces apply to this visit.';
+  }
+  render();
+  query('#referencePace-m').focus({ preventScroll: true });
+  toast(message);
+}
+
 function onSubmit(event) {
+  if (event.target.id === 'referencePacesForm') {
+    event.preventDefault();
+    saveReferencePaces();
+    return;
+  }
   if (event.target.id !== 'weeklyGoalForm') return;
   event.preventDefault();
   const input = query('#weeklyGoal');
@@ -231,6 +264,15 @@ try {
   state.weeklyGoal = parseWeeklyGoal(localStorage.getItem(WEEKLY_GOAL_KEY));
 } catch {
   // The goal remains available for the current visit when storage is blocked.
+}
+
+try {
+  const paces = JSON.parse(localStorage.getItem(REFERENCE_PACES_KEY));
+  for (const unit of ['m', 'yd']) {
+    if (Number.isSafeInteger(paces?.[unit]) && paces[unit] > 0) state.referencePaces[unit] = paces[unit];
+  }
+} catch {
+  // Use empty reference paces when stored settings are unavailable.
 }
 
 window.addEventListener('click', onClick);

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseFit } from '../src/fit/swimming-parser.js';
-import { intervals, intervalSets } from '../src/analytics/intervals.js';
+import { intervalPaceBands, intervals, intervalSets, setsByRepeatDistance } from '../src/analytics/intervals.js';
 import { sessionPage } from '../src/ui/session-detail.js';
 import { state } from '../src/state.js';
 import { makeFit } from './fit-fixture.js';
@@ -69,4 +69,42 @@ test('yard-pool intervals show yards', () => {
   state.sessions = [session];
   state.selectedSessionId = session.id;
   assert.match(sessionPage(), /2 × 50 yd/);
+});
+
+test('pace bands sum swim time, omit rest, and omit intervals with excluded lengths', () => {
+  const session = parse({ durations: [20, 25, 30, 35], restAfter: [0, 1, 2], restSeconds: 10 });
+  session.lengthOverrides = { 6: 'exclude' };
+  assert.deepEqual(intervalPaceBands([session], 'm', 100), {
+    bands: { faster: 20, near: 25, slower: 30 },
+    skipped: 1
+  });
+});
+
+test('pace bands keep yards separate and use the distance of 100 yards', () => {
+  const yards = parse({ poolMeters: 22.86, poolUnit: 1, durations: [25] });
+  const meters = parse({ durations: [25] });
+  const openWater = parse({ subSport: 18, durations: [25] });
+  assert.deepEqual(intervalPaceBands([yards, meters, openWater], 'yd', 100), {
+    bands: { faster: 0, near: 25, slower: 0 },
+    skipped: 0
+  });
+});
+
+test('set structure distinguishes continuous bouts from equal total distance in repeats', () => {
+  const continuous = parse({ durations: Array(16).fill(25) });
+  const repeated = parse({
+    durations: Array(16).fill(20),
+    restAfter: Array.from({ length: 15 }, (_, index) => index),
+    restSeconds: 15
+  });
+  const yards = parse({ poolMeters: 22.86, poolUnit: 1, durations: [25] });
+  const openWater = parse({ subSport: 18, durations: [25] });
+  const sessions = [continuous, repeated, yards, openWater];
+  const [short, long] = setsByRepeatDistance(sessions, 'm');
+
+  assert.deepEqual([short.distance, short.totalDistance, short.duration, short.sessions.size], [25, 400, 320, 1]);
+  assert.deepEqual(short.sets.map(set => [set.count, set.medianPace, set.medianRest, set.uncertain]), [[16, 80, 15, false]]);
+  assert.deepEqual([long.distance, long.totalDistance, long.duration], [400, 400, 400]);
+  assert.deepEqual(long.sets.map(set => [set.count, set.medianRest, set.uncertain]), [[1, null, true]]);
+  assert.deepEqual(setsByRepeatDistance(sessions, 'yd').map(group => group.distance), [25]);
 });

@@ -417,7 +417,7 @@ textarea, input[type=text], #weeklyGoal {
   font-size: 13px;
   resize: vertical;
 }
-#weeklyGoal { width: 7rem; }
+#weeklyGoal, input.reference-pace { width: 7rem; }
 textarea { min-height: 140px; }
 .save { margin-top: 16px; }
 
@@ -1169,18 +1169,79 @@ function intervals(session) {
   return result;
 }
 
-/** Group consecutive intervals with the same number of lengths, e.g. 5 × 200 m. */
-function intervalSets(list) {
+/** Group consecutive intervals by length count by default, e.g. 5 × 200 m. */
+function intervalSets(list, key = interval => interval.lengths) {
   const sets = [];
   for (const interval of list) {
     const previous = sets[sets.length - 1];
-    if (previous && previous.intervals[0].lengths === interval.lengths) {
+    if (previous && key(previous.intervals[0]) === key(interval)) {
       previous.intervals.push(interval);
     } else {
       sets.push({ intervals: [interval] });
     }
   }
   return sets;
+}
+
+/** Classify interval swim time by pace relative to the user's seconds per 100. */
+function intervalPaceBands(sessions, unit, reference) {
+  const bands = { faster: 0, near: 0, slower: 0 };
+  let skipped = 0;
+  const hundredInMeters = unit === 'yd' ? 91.44 : 100;
+
+  for (const session of sessions) {
+    if (session.sport !== 'pool' || (session.poolUnit || 'm') !== unit) continue;
+    const flags = assessLengths(session);
+    for (const interval of intervals(session)) {
+      if (flags.slice(interval.first, interval.last + 1).some(flag => flag.excluded)) {
+        skipped++;
+        continue;
+      }
+      const pace = interval.duration * hundredInMeters / interval.distance;
+      const band = pace < reference * 0.95 ? 'faster' : pace > reference * 1.05 ? 'slower' : 'near';
+      bands[band] += interval.duration;
+    }
+  }
+  return { bands, skipped };
+}
+
+function medianRecorded(values) {
+  const ordered = values.filter(Number.isFinite).sort((a, b) => a - b);
+  if (!ordered.length) return null;
+  const middle = Math.floor(ordered.length / 2);
+  return ordered.length % 2 ? ordered[middle] : (ordered[middle - 1] + ordered[middle]) / 2;
+}
+
+/** Summarize recorded pool sets by repeat distance in the requested pool unit. */
+function setsByRepeatDistance(sessions, unit) {
+  const metersPerUnit = unit === 'yd' ? 0.9144 : 1;
+  const repeatDistance = interval => Math.round(interval.distance / metersPerUnit * 100) / 100;
+  const groups = new Map();
+
+  for (const session of sessions) {
+    if (session.sport !== 'pool' || (session.poolUnit || 'm') !== unit) continue;
+    const recorded = intervals(session);
+    for (const { intervals: repeats } of intervalSets(recorded, repeatDistance)) {
+      const distance = repeatDistance(repeats[0]);
+      const group = groups.get(distance) || { distance, totalDistance: 0, duration: 0, sets: [], sessions: new Set() };
+      const duration = repeats.reduce((total, repeat) => total + repeat.duration, 0);
+      const meters = repeats.reduce((total, repeat) => total + repeat.distance, 0);
+      group.totalDistance += meters / metersPerUnit;
+      group.duration += duration;
+      group.sessions.add(session.id);
+      group.sets.push({
+        session,
+        count: repeats.length,
+        duration,
+        medianPace: medianRecorded(repeats.map(repeat => repeat.duration * 100 * metersPerUnit / repeat.distance)),
+        medianRest: medianRecorded(repeats.map(repeat => repeat.rest)),
+        uncertain: recorded.length === 1 && repeats[0].lengths > 1 && repeats[0].rest === null
+      });
+      groups.set(distance, group);
+    }
+  }
+
+  return [...groups.values()].sort((a, b) => a.distance - b.distance);
 }
 
 
@@ -1354,6 +1415,7 @@ const state = {
   selectedSessionId: null,
   period: 'all',
   weeklyGoal: null,
+  referencePaces: { m: null, yd: null },
   drafts: new Map()
 };
 
@@ -2057,7 +2119,81 @@ function weeklyTrainingPanel(sessions, goal) {
     </section>`;
 }
 
-function trendsPage(sessions, goal = null) {
+function paceBandResults(sessions, unit, reference) {
+  const { bands, skipped } = intervalPaceBands(sessions, unit, reference);
+  const total = bands.faster + bands.near + bands.slower;
+  const rows = [
+    ['Faster than reference', bands.faster],
+    ['Within 5% of reference', bands.near],
+    ['Slower than reference', bands.slower]
+  ];
+
+  return `
+    <h3>${formatSeconds(reference)} / 100 ${unit}</h3>
+    ${total ? `
+      <div class="tablewrap"><table>
+        <thead><tr><th scope="col">Pace band</th><th scope="col">Swim time</th><th scope="col">Share</th></tr></thead>
+        <tbody>${rows.map(([label, duration]) => `
+          <tr><th scope="row">${label}</th><td>${formatDuration(duration)}</td><td>${formatNumber(duration / total * 100)}%</td></tr>`).join('')}</tbody>
+      </table></div>` : '<p class="muted">No usable pool intervals in this selection.</p>'}
+    ${skipped ? `<p class="fineprint">Intervals skipped because they contain excluded lengths · ${skipped}</p>` : ''}`;
+}
+
+function effortMixPanel(sessions, paces) {
+  const units = ['m', 'yd'];
+
+  return `
+    <section class="panel">
+      <div class="panelhead"><div><h2>Pool effort mix</h2>
+        <p>Compare average interval pace with a reference pace you choose.</p>
+      </div></div>
+      <p><button class="secondary" data-page="guide">Read the training guide</button></p>
+      <form id="referencePacesForm" aria-describedby="referencePacesHelp">
+        ${units.map(unit => `
+          <label class="fieldlabel" for="referencePace-${unit}">Reference pace per 100 ${unit}</label>
+          <input class="reference-pace" id="referencePace-${unit}" type="text" placeholder="1:45"
+            pattern="[0-9]+:[0-5][0-9]" value="${paces[unit] ? formatSeconds(paces[unit]) : ''}">`).join('')}
+        <p id="referencePacesHelp" class="fineprint">Enter minutes:seconds. Leave a field blank to clear that reference.</p>
+        <button class="secondary" type="submit">Save reference paces</button>
+      </form>
+      ${units.filter(unit => paces[unit]).map(unit => paceBandResults(sessions, unit, paces[unit])).join('')}
+    </section>`;
+}
+
+function setStructurePanel(sessions) {
+  const units = ['m', 'yd'].map(unit => ({ unit, groups: setsByRepeatDistance(sessions, unit) }))
+    .filter(({ groups }) => groups.length);
+
+  return `
+    <section class="panel">
+      <div class="panelhead"><div><h2>Set structure</h2>
+        <p>Consecutive repeats of the same distance are grouped using recorded rests.
+          Expand a distance to see the sets behind the totals.</p>
+      </div></div>
+      ${units.length ? units.map(({ unit, groups }) => `
+        <h3>${unit === 'm' ? 'Meter pools' : 'Yard pools'}</h3>
+        ${groups.map(group => `
+          <details>
+            <summary>${formatNumber(group.distance, 2)} ${unit} bouts ·
+              ${formatNumber(group.totalDistance, 2)} ${unit} total ·
+              ${formatDuration(group.duration)} swim time · ${group.sessions.size} ${group.sessions.size === 1 ? 'session' : 'sessions'}</summary>
+            <div class="tablewrap"><table>
+              <thead><tr><th scope="col">Session</th><th scope="col">Recorded set</th>
+                <th scope="col">Swim time</th><th scope="col">Median pace / 100 ${unit}</th>
+                <th scope="col">Median recorded rest</th></tr></thead>
+              <tbody>${group.sets.map(set => `
+                <tr><td><button class="asidelink" data-open-session="${escapeHtml(set.session.id)}">${formatDate(set.session.date)} · ${escapeHtml(set.session.title || 'Swimming session')}</button></td>
+                  <td>${set.count > 1 ? `${set.count} × ` : ''}${formatNumber(group.distance, 2)} ${unit}
+                    ${set.uncertain ? '<small>· No rest markers</small>' : ''}</td>
+                  <td>${formatDuration(set.duration)}</td><td>${formatSeconds(set.medianPace)}</td>
+                  <td>${formatSeconds(set.medianRest)}</td></tr>`).join('')}</tbody>
+            </table></div>
+          </details>`).join('')}`).join('') : '<p class="muted">Import a pool swim with recorded lengths to see its set structure.</p>'}
+      ${units.length ? '<p class="fineprint">Totals use recorded lengths. Missing rest markers can make separate repeats look like one continuous bout.</p>' : ''}
+    </section>`;
+}
+
+function trendsPage(sessions, goal = null, paces = {}) {
   const ordered = [...sessions].reverse();
   const distanceTrend = ordered.map(session => ({
     label: formatDate(session.date, { month: 'short', day: 'numeric' }),
@@ -2072,6 +2208,8 @@ function trendsPage(sessions, goal = null) {
     <div class="pagehead"><div><div class="eyebrow">LAB / 03 / TRENDS</div><h1>Training trends</h1><p>Track changes across sessions, with context.</p></div></div>
     ${metricCards(sessions)}
     ${weeklyTrainingPanel(sessions, goal)}
+    ${setStructurePanel(sessions)}
+    ${effortMixPanel(sessions, paces)}
     <div class="twocol">
       <section class="panel">
         <div class="panelhead"><div><h2>Session distance</h2><p>Distance in km</p></div><span class="fig">FIG.1 · KM</span></div>
@@ -2111,6 +2249,56 @@ function settingsPage() {
     </div>`;
 }
 
+function trainingGuidePage() {
+  return `
+    <div class="pagehead"><div><h1>Swimming training guide</h1>
+      <p>How to read a set from its distance, repetitions, pace and recovery.</p>
+    </div></div>
+    <section class="panel">
+      <h2>Set structure and purpose</h2>
+      <p>A continuous 400 m swim and 16 × 25 m both cover 400 m. One is a sustained bout.
+        The other is a set of short repeats. A single 25 m repeat can be an easy drill or a
+        maximal sprint. A set of short repeats can build aerobic volume when the pace is
+        controlled and recovery is brief.</p>
+      <p>A maximal continuous 400 m is a sustained race effort. Studies in competitive
+        swimmers show a large aerobic contribution and a meaningful anaerobic contribution.
+        Distance and duration help describe the effort. The swimmer's pace and recovery
+        help determine the intended training stimulus.</p>
+      <p><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5394852/" target="_blank" rel="noopener">Study of aerobic and anaerobic contributions in maximal 400 m front crawl</a></p>
+    </section>
+    <section class="panel">
+      <h2>Common training purposes</h2>
+      <p>Coaches use overlapping classifications. This table gives illustrative sets.
+        The target pace and recovery determine how each example is actually swum.</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th scope="col">Purpose</th><th scope="col">What defines it</th><th scope="col">Example</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Recovery and technique</th><td>Easy swimming or focused practice of skills such as body position, breathing, starts or turns.</td><td>8 × 25 m alternating drill and easy swim.</td></tr>
+          <tr><th scope="row">Aerobic endurance</th><td>Sustained, controlled work, either continuous or accumulated through repeats with brief recovery.</td><td>400 m steady or 8 × 50 m steady with brief rest.</td></tr>
+          <tr><th scope="row">Threshold</th><td>Work close to an individually assessed threshold, such as a pace near maximal lactate steady state. The same pace can represent different intensities for different swimmers.</td><td>8 × 100 m at an assessed threshold pace with brief rest.</td></tr>
+          <tr><th scope="row">Aerobic power</th><td>Hard work designed to raise oxygen uptake toward its maximum. Repeat duration and recovery shape the response.</td><td>A series of hard 100–200 m repeats at an individually chosen pace and recovery.</td></tr>
+          <tr><th scope="row">Race pace</th><td>Practice at the speed of a named event. The target changes with the event and swimmer.</td><td>50 m repeats at target 200 m race pace.</td></tr>
+          <tr><th scope="row">Speed endurance and lactate tolerance</th><td>High-intensity work aimed at sustaining speed as fatigue builds. Coaches also use separate lactate-production sets.</td><td>Repeated hard 50 m efforts with recovery chosen for the set's purpose.</td></tr>
+          <tr><th scope="row">Sprint and pure speed</th><td>Brief near-maximal or maximal efforts, with enough recovery to preserve speed and execution across repeats.</td><td>6 × 15–25 m fast with generous recovery.</td></tr>
+        </tbody>
+      </table></div>
+      <p><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6683628/" target="_blank" rel="noopener">Survey of elite British swimming coaches</a> ·
+        <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12371893/" target="_blank" rel="noopener">Middle-distance case study with a seven-zone framework</a></p>
+    </section>
+    <section class="panel">
+      <h2>What your FIT file can tell you</h2>
+      <p>MySwimLab can report recorded repeat distance, swim time, pace and rest.
+        A missing rest marker may make separate repeats look continuous.
+        To interpret training purpose, add the intended set, stroke or drill,
+        target race pace and perceived effort. A swimmer-specific test can provide
+        an intensity reference. Critical swim speed is a performance estimate
+        derived from timed efforts, while maximal lactate steady state is
+        assessed from blood lactate measurements during sustained efforts.</p>
+      <p><a href="https://pubmed.ncbi.nlm.nih.gov/1521952/" target="_blank" rel="noopener">Critical swim speed study</a> ·
+        <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC13747781/" target="_blank" rel="noopener">Example of individually assessed intensity zones in elite swimmers</a></p>
+    </section>`;
+}
+
 
 
 // ===== src/ui/layout.js =====
@@ -2120,7 +2308,8 @@ const NAVIGATION = [
   ['sessions', 'Sessions'],
   ['trends', 'Trends'],
   ['performance', 'Performance curve'],
-  ['settings', 'Data & settings']
+  ['settings', 'Data & settings'],
+  ['guide', 'Training guide']
 ];
 
 function layout() {
@@ -2179,8 +2368,9 @@ function render() {
     sessions: () => sessionsPage(list),
     'session-detail': () => sessionPage(),
     performance: () => performancePage(list),
-    trends: () => trendsPage(list, state.weeklyGoal),
-    settings: () => settingsPage()
+    trends: () => trendsPage(list, state.weeklyGoal, state.referencePaces),
+    settings: () => settingsPage(),
+    guide: () => trainingGuidePage()
   };
 
   query('#main').innerHTML = (pages[state.page] || pages.overview)();
@@ -2226,6 +2416,7 @@ function downloadJson(filename, value) {
  * FIT decoder, analytics, and file importer never import anything from the UI.
  */
 const WEEKLY_GOAL_KEY = 'myswimlab.weekly-goal';
+const REFERENCE_PACES_KEY = 'myswimlab.reference-paces';
 
 let importGeneration = 0;
 
@@ -2416,7 +2607,39 @@ function parseWeeklyGoal(value) {
   return Number.isSafeInteger(goal) && goal > 0 ? goal : null;
 }
 
+function parseReferencePace(value) {
+  const match = /^(\d+):([0-5]\d)$/.exec(value);
+  if (!match) return null;
+  const seconds = Number(match[1]) * 60 + Number(match[2]);
+  return Number.isSafeInteger(seconds) && seconds > 0 ? seconds : null;
+}
+
+function saveReferencePaces() {
+  const drafts = { m: query('#referencePace-m').value, yd: query('#referencePace-yd').value };
+  const paces = { m: parseReferencePace(drafts.m), yd: parseReferencePace(drafts.yd) };
+  if (Object.keys(drafts).some(unit => drafts[unit] !== '' && paces[unit] === null)) {
+    toast('Enter a reference pace greater than 0:00 in minutes:seconds.');
+    return;
+  }
+
+  state.referencePaces = paces;
+  let message = 'Reference paces saved.';
+  try {
+    localStorage.setItem(REFERENCE_PACES_KEY, JSON.stringify(paces));
+  } catch {
+    message = 'Browser storage is unavailable. Your reference paces apply to this visit.';
+  }
+  render();
+  query('#referencePace-m').focus({ preventScroll: true });
+  toast(message);
+}
+
 function onSubmit(event) {
+  if (event.target.id === 'referencePacesForm') {
+    event.preventDefault();
+    saveReferencePaces();
+    return;
+  }
   if (event.target.id !== 'weeklyGoalForm') return;
   event.preventDefault();
   const input = query('#weeklyGoal');
@@ -2443,6 +2666,15 @@ try {
   state.weeklyGoal = parseWeeklyGoal(localStorage.getItem(WEEKLY_GOAL_KEY));
 } catch {
   // The goal remains available for the current visit when storage is blocked.
+}
+
+try {
+  const paces = JSON.parse(localStorage.getItem(REFERENCE_PACES_KEY));
+  for (const unit of ['m', 'yd']) {
+    if (Number.isSafeInteger(paces?.[unit]) && paces[unit] > 0) state.referencePaces[unit] = paces[unit];
+  }
+} catch {
+  // Use empty reference paces when stored settings are unavailable.
 }
 
 window.addEventListener('click', onClick);

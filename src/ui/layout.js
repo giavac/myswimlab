@@ -7,7 +7,8 @@ const NAVIGATION = [
   ['sessions', 'Sessions'],
   ['trends', 'Trends'],
   ['performance', 'Performance curve'],
-  ['settings', 'Data & settings']
+  ['settings', 'Data & settings'],
+  ['guide', 'Training guide']
 ];
 
 export function layout() {

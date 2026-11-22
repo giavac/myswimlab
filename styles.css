@@ -410,7 +410,7 @@ textarea, input[type=text], #weeklyGoal {
   font-size: 13px;
   resize: vertical;
 }
-#weeklyGoal { width: 7rem; }
+#weeklyGoal, input.reference-pace { width: 7rem; }
 textarea { min-height: 140px; }
 .save { margin-top: 16px; }
 
