@@ -53,24 +53,62 @@ export function lengthDrift(session) {
   return first > 0 ? 100 * (last - first) / first : null;
 }
 
-export function weekVolumes(sessions) {
+function localMonday(value) {
+  const date = new Date(value);
+  const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  monday.setDate(monday.getDate() - (monday.getDay() + 6) % 7);
+  return monday;
+}
+
+function weeklyTotals(sessions) {
   const totals = new Map();
-
   for (const session of sessions) {
-    const date = new Date(session.date);
-    // Group by the user's local calendar week, not UTC midnight.
-    const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    monday.setDate(monday.getDate() - (monday.getDay() + 6) % 7);
+    const week = localMonday(session.date).getTime();
+    const total = totals.get(week) || { distance: 0, duration: 0, sessions: 0 };
+    total.distance += session.distance;
+    total.duration += session.duration;
+    total.sessions++;
+    totals.set(week, total);
+  }
+  return totals;
+}
 
-    const week = [monday.getFullYear(), String(monday.getMonth() + 1).padStart(2, '0'),
-      String(monday.getDate()).padStart(2, '0')].join('-');
-    totals.set(week, (totals.get(week) || 0) + session.distance);
+export function weekVolumes(sessions) {
+  return [...weeklyTotals(sessions)].sort(([a], [b]) => a - b).map(([week, total]) => ({
+    label: formatDate(week, { month: 'short', day: 'numeric' }),
+    value: total.distance / 1000
+  }));
+}
+
+export function weeklyTraining(sessions, now = new Date()) {
+  const totals = weeklyTotals(sessions);
+  const dates = [...totals.keys()].sort((a, b) => a - b);
+  const currentMonday = localMonday(now).getTime();
+  const completed = [];
+  const current = totals.get(currentMonday) ?? null;
+  const last = Math.min(dates.at(-1), currentMonday - 1);
+
+  // Advance by calendar weeks to stay on Monday across daylight saving changes.
+  for (const monday = new Date(dates[0]); monday.getTime() <= last; monday.setDate(monday.getDate() + 7)) {
+    const week = monday.getTime();
+    completed.push({ week, ...(totals.get(week) || { distance: 0, duration: 0, sessions: 0 }) });
   }
 
-  return [...totals].sort(([a], [b]) => a.localeCompare(b)).map(([week, meters]) => ({
-    label: formatDate(`${week}T12:00:00`, { month: 'short', day: 'numeric' }),
-    value: meters / 1000
-  }));
+  const sum = { distance: 0, duration: 0, sessions: 0 };
+  let activeWeeks = 0;
+  for (const week of completed) {
+    sum.distance += week.distance;
+    sum.duration += week.duration;
+    sum.sessions += week.sessions;
+    if (week.sessions > 0) activeWeeks++;
+  }
+
+  const average = completed.length ? {
+    distance: sum.distance / completed.length,
+    duration: sum.duration / completed.length,
+    sessions: sum.sessions / completed.length
+  } : null;
+  return { completed, current, average, activeWeeks };
 }
 
 // Formatting is presentation-only; kept separate from the numeric functions above.

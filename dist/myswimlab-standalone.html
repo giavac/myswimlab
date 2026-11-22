@@ -1044,24 +1044,62 @@ function lengthDrift(session) {
   return first > 0 ? 100 * (last - first) / first : null;
 }
 
-function weekVolumes(sessions) {
+function localMonday(value) {
+  const date = new Date(value);
+  const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  monday.setDate(monday.getDate() - (monday.getDay() + 6) % 7);
+  return monday;
+}
+
+function weeklyTotals(sessions) {
   const totals = new Map();
-
   for (const session of sessions) {
-    const date = new Date(session.date);
-    // Group by the user's local calendar week, not UTC midnight.
-    const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    monday.setDate(monday.getDate() - (monday.getDay() + 6) % 7);
+    const week = localMonday(session.date).getTime();
+    const total = totals.get(week) || { distance: 0, duration: 0, sessions: 0 };
+    total.distance += session.distance;
+    total.duration += session.duration;
+    total.sessions++;
+    totals.set(week, total);
+  }
+  return totals;
+}
 
-    const week = [monday.getFullYear(), String(monday.getMonth() + 1).padStart(2, '0'),
-      String(monday.getDate()).padStart(2, '0')].join('-');
-    totals.set(week, (totals.get(week) || 0) + session.distance);
+function weekVolumes(sessions) {
+  return [...weeklyTotals(sessions)].sort(([a], [b]) => a - b).map(([week, total]) => ({
+    label: formatDate(week, { month: 'short', day: 'numeric' }),
+    value: total.distance / 1000
+  }));
+}
+
+function weeklyTraining(sessions, now = new Date()) {
+  const totals = weeklyTotals(sessions);
+  const dates = [...totals.keys()].sort((a, b) => a - b);
+  const currentMonday = localMonday(now).getTime();
+  const completed = [];
+  const current = totals.get(currentMonday) ?? null;
+  const last = Math.min(dates.at(-1), currentMonday - 1);
+
+  // Advance by calendar weeks to stay on Monday across daylight saving changes.
+  for (const monday = new Date(dates[0]); monday.getTime() <= last; monday.setDate(monday.getDate() + 7)) {
+    const week = monday.getTime();
+    completed.push({ week, ...(totals.get(week) || { distance: 0, duration: 0, sessions: 0 }) });
   }
 
-  return [...totals].sort(([a], [b]) => a.localeCompare(b)).map(([week, meters]) => ({
-    label: formatDate(`${week}T12:00:00`, { month: 'short', day: 'numeric' }),
-    value: meters / 1000
-  }));
+  const sum = { distance: 0, duration: 0, sessions: 0 };
+  let activeWeeks = 0;
+  for (const week of completed) {
+    sum.distance += week.distance;
+    sum.duration += week.duration;
+    sum.sessions += week.sessions;
+    if (week.sessions > 0) activeWeeks++;
+  }
+
+  const average = completed.length ? {
+    distance: sum.distance / completed.length,
+    duration: sum.duration / completed.length,
+    sessions: sum.sessions / completed.length
+  } : null;
+  return { completed, current, average, activeWeeks };
 }
 
 // Formatting is presentation-only; kept separate from the numeric functions above.
@@ -1447,7 +1485,7 @@ function barChart(data) {
   return `<div class="bars">${data.map(item => `
     <div class="barcol">
       <div class="bar-track">
-        <div class="bar-fill" style="height:${Math.max(3, item.value / maximum * 100)}%" title="${item.value.toFixed(2)} km"></div>
+        <div class="bar-fill" style="height:${item.value > 0 ? Math.max(3, item.value / maximum * 100) : 0}%" title="${item.value.toFixed(2)} km"></div>
       </div>
       <small>${escapeHtml(item.label)}</small>
     </div>`).join('')}</div>`;
@@ -1973,6 +2011,40 @@ function performancePage(sessions) {
     <p class="fineprint">Different strokes, drills or equipment may not be comparable. Yard pace is /100yd.</p>`;
 }
 
+function weeklyTrainingPanel(sessions) {
+  const { completed, current, average, activeWeeks } = weeklyTraining(sessions);
+  const chart = completed.slice(-12).map(week => ({
+    label: formatDate(week.week, { month: 'short', day: 'numeric' }),
+    value: week.distance / 1000
+  }));
+
+  return `
+    <section class="panel">
+      <div class="panelhead"><div><h2>Weekly training</h2>
+        <p>Monday–Sunday, from the first to the last swim in your selection. Weeks with no imported swims count as zero.</p>
+      </div></div>
+      ${average ? `
+        <p>Weekly averages · <strong>${formatNumber(average.distance / 1000, 2)} km</strong> ·
+          <strong>${formatDuration(average.duration)}</strong> swim time ·
+          <strong>${formatNumber(average.sessions, 1)}</strong> swims</p>
+        <p>Swam in <strong>${activeWeeks} of ${completed.length} weeks</strong>
+          (${formatNumber(activeWeeks / completed.length * 100)}%)</p>
+        <p class="muted">Weekly distance in km · ${chart.length < completed.length ? 'Latest 12 completed weeks' : 'Completed weeks'}</p>
+        ${barChart(chart)}
+        <details>
+          <summary>Weekly totals</summary>
+          <div class="tablewrap"><table>
+            <thead><tr><th scope="col">Week of</th><th scope="col">Distance</th><th scope="col">Swim time</th><th scope="col">Swims</th></tr></thead>
+            <tbody>${[...completed].reverse().map(week => `
+              <tr><td>${formatDate(week.week)}</td><td>${formatNumber(week.distance / 1000, 2)} km</td>
+                <td>${formatDuration(week.duration)}</td><td>${week.sessions}</td></tr>`).join('')}</tbody>
+          </table></div>
+        </details>` : '<p class="muted">Import swims from a completed week to see weekly averages.</p>'}
+      ${current ? `<p><strong>This week so far</strong> · ${formatNumber(current.distance / 1000, 2)} km ·
+        ${formatDuration(current.duration)} swim time · ${current.sessions} ${current.sessions === 1 ? 'swim' : 'swims'}</p>` : ''}
+    </section>`;
+}
+
 function trendsPage(sessions) {
   const ordered = [...sessions].reverse();
   const distanceTrend = ordered.map(session => ({
@@ -1987,6 +2059,7 @@ function trendsPage(sessions) {
   return `
     <div class="pagehead"><div><div class="eyebrow">LAB / 03 / TRENDS</div><h1>Training trends</h1><p>Track changes across sessions, with context.</p></div></div>
     ${metricCards(sessions)}
+    ${weeklyTrainingPanel(sessions)}
     <div class="twocol">
       <section class="panel">
         <div class="panelhead"><div><h2>Session distance</h2><p>Distance in km</p></div><span class="fig">FIG.1 · KM</span></div>

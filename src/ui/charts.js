@@ -72,7 +72,7 @@ export function barChart(data) {
   return `<div class="bars">${data.map(item => `
     <div class="barcol">
       <div class="bar-track">
-        <div class="bar-fill" style="height:${Math.max(3, item.value / maximum * 100)}%" title="${item.value.toFixed(2)} km"></div>
+        <div class="bar-fill" style="height:${item.value > 0 ? Math.max(3, item.value / maximum * 100) : 0}%" title="${item.value.toFixed(2)} km"></div>
       </div>
       <small>${escapeHtml(item.label)}</small>
     </div>`).join('')}</div>`;

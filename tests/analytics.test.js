@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { distanceBests } from '../src/analytics/best-efforts.js';
-import { pace, summary, weekVolumes, lengthDrift } from '../src/analytics/metrics.js';
+import { pace, summary, weekVolumes, weeklyTraining, lengthDrift } from '../src/analytics/metrics.js';
 
 const length = (duration, sequence, isRest = false) => ({
   duration, sequence, index: sequence, isRest,
@@ -57,4 +57,30 @@ test('weekly totals aggregate by the local Monday', () => {
 
 test('stroke drift reports null for short sessions', () => {
   assert.equal(lengthDrift(makeSession([length(23, 0)])), null);
+});
+
+test('weekly averages include gaps and separate the week in progress', () => {
+  const session = (day, distance, duration) => ({
+    date: new Date(2026, 10, day, 12).toISOString(), distance, duration
+  });
+  const results = weeklyTraining([
+    session(17, 2000, 2400), session(3, 3000, 3600), session(4, 1000, 1200)
+  ], new Date(2026, 10, 20, 12));
+
+  assert.deepEqual(results.completed.map(week => [new Date(week.week).getDate(), week.sessions]), [[2, 2], [9, 0]]);
+  assert.deepEqual(results.average, { distance: 2000, duration: 2400, sessions: 1 });
+  assert.equal(results.activeWeeks, 1);
+  assert.deepEqual(results.current, { distance: 2000, duration: 2400, sessions: 1 });
+});
+
+test('historical selections end with their last swim week', () => {
+  const session = { date: new Date(2026, 10, 3, 12).toISOString(), distance: 1500, duration: 1800 };
+  const results = weeklyTraining([session], new Date(2026, 10, 23, 12));
+  assert.equal(results.completed.length, 1);
+  assert.equal(results.current, null);
+
+  const currentOnly = weeklyTraining([session], new Date(2026, 10, 4, 12));
+  assert.equal(currentOnly.average, null);
+  assert.equal(currentOnly.current.sessions, 1);
+  assert.equal(weeklyTraining([]).average, null);
 });

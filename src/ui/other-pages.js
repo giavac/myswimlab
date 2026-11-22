@@ -1,7 +1,7 @@
 /** Secondary views: performance, trends, and local-data settings. */
 import { distanceBests } from '../analytics/best-efforts.js';
-import { formatDate, formatSeconds, summary } from '../analytics/metrics.js';
-import { lineChart } from './charts.js';
+import { formatDate, formatDuration, formatNumber, formatSeconds, summary, weeklyTraining } from '../analytics/metrics.js';
+import { barChart, lineChart } from './charts.js';
 import { metricCards } from './components.js';
 import { escapeHtml } from './shared.js';
 
@@ -44,6 +44,40 @@ export function performancePage(sessions) {
     <p class="fineprint">Different strokes, drills or equipment may not be comparable. Yard pace is /100yd.</p>`;
 }
 
+function weeklyTrainingPanel(sessions) {
+  const { completed, current, average, activeWeeks } = weeklyTraining(sessions);
+  const chart = completed.slice(-12).map(week => ({
+    label: formatDate(week.week, { month: 'short', day: 'numeric' }),
+    value: week.distance / 1000
+  }));
+
+  return `
+    <section class="panel">
+      <div class="panelhead"><div><h2>Weekly training</h2>
+        <p>Monday–Sunday, from the first to the last swim in your selection. Weeks with no imported swims count as zero.</p>
+      </div></div>
+      ${average ? `
+        <p>Weekly averages · <strong>${formatNumber(average.distance / 1000, 2)} km</strong> ·
+          <strong>${formatDuration(average.duration)}</strong> swim time ·
+          <strong>${formatNumber(average.sessions, 1)}</strong> swims</p>
+        <p>Swam in <strong>${activeWeeks} of ${completed.length} weeks</strong>
+          (${formatNumber(activeWeeks / completed.length * 100)}%)</p>
+        <p class="muted">Weekly distance in km · ${chart.length < completed.length ? 'Latest 12 completed weeks' : 'Completed weeks'}</p>
+        ${barChart(chart)}
+        <details>
+          <summary>Weekly totals</summary>
+          <div class="tablewrap"><table>
+            <thead><tr><th scope="col">Week of</th><th scope="col">Distance</th><th scope="col">Swim time</th><th scope="col">Swims</th></tr></thead>
+            <tbody>${[...completed].reverse().map(week => `
+              <tr><td>${formatDate(week.week)}</td><td>${formatNumber(week.distance / 1000, 2)} km</td>
+                <td>${formatDuration(week.duration)}</td><td>${week.sessions}</td></tr>`).join('')}</tbody>
+          </table></div>
+        </details>` : '<p class="muted">Import swims from a completed week to see weekly averages.</p>'}
+      ${current ? `<p><strong>This week so far</strong> · ${formatNumber(current.distance / 1000, 2)} km ·
+        ${formatDuration(current.duration)} swim time · ${current.sessions} ${current.sessions === 1 ? 'swim' : 'swims'}</p>` : ''}
+    </section>`;
+}
+
 export function trendsPage(sessions) {
   const ordered = [...sessions].reverse();
   const distanceTrend = ordered.map(session => ({
@@ -58,6 +92,7 @@ export function trendsPage(sessions) {
   return `
     <div class="pagehead"><div><div class="eyebrow">LAB / 03 / TRENDS</div><h1>Training trends</h1><p>Track changes across sessions, with context.</p></div></div>
     ${metricCards(sessions)}
+    ${weeklyTrainingPanel(sessions)}
     <div class="twocol">
       <section class="panel">
         <div class="panelhead"><div><h2>Session distance</h2><p>Distance in km</p></div><span class="fig">FIG.1 · KM</span></div>
