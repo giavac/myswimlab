@@ -19,7 +19,7 @@ export function render() {
     sessions: () => sessionsPage(list),
     'session-detail': () => sessionPage(),
     performance: () => performancePage(list),
-    trends: () => trendsPage(list),
+    trends: () => trendsPage(list, state.weeklyGoal),
     settings: () => settingsPage()
   };
 

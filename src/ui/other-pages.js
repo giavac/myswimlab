@@ -44,8 +44,9 @@ export function performancePage(sessions) {
     <p class="fineprint">Different strokes, drills or equipment may not be comparable. Yard pace is /100yd.</p>`;
 }
 
-function weeklyTrainingPanel(sessions) {
+function weeklyTrainingPanel(sessions, goal) {
   const { completed, current, average, activeWeeks } = weeklyTraining(sessions);
+  const weeksAtGoal = goal ? completed.filter(week => week.sessions >= goal).length : 0;
   const chart = completed.slice(-12).map(week => ({
     label: formatDate(week.week, { month: 'short', day: 'numeric' }),
     value: week.distance / 1000
@@ -56,12 +57,21 @@ function weeklyTrainingPanel(sessions) {
       <div class="panelhead"><div><h2>Weekly training</h2>
         <p>Monday–Sunday, from the first to the last swim in your selection. Weeks with no imported swims count as zero.</p>
       </div></div>
+      <form id="weeklyGoalForm">
+        <label class="fieldlabel" for="weeklyGoal">Goal (swims per week)</label>
+        <input id="weeklyGoal" type="number" min="1" step="1" value="${goal ?? ''}"
+          aria-describedby="weeklyGoalHelp">
+        <button class="secondary" type="submit">Save goal</button>
+        <p id="weeklyGoalHelp" class="fineprint">Leave blank and save to clear your goal.</p>
+      </form>
       ${average ? `
         <p>Weekly averages · <strong>${formatNumber(average.distance / 1000, 2)} km</strong> ·
           <strong>${formatDuration(average.duration)}</strong> swim time ·
           <strong>${formatNumber(average.sessions, 1)}</strong> swims</p>
         <p>Swam in <strong>${activeWeeks} of ${completed.length} weeks</strong>
           (${formatNumber(activeWeeks / completed.length * 100)}%)</p>
+        ${goal ? `<p>Met your goal in <strong>${weeksAtGoal} of ${completed.length} weeks</strong>
+          (${formatNumber(weeksAtGoal / completed.length * 100)}%).</p>` : ''}
         <p class="muted">Weekly distance in km · ${chart.length < completed.length ? 'Latest 12 completed weeks' : 'Completed weeks'}</p>
         ${barChart(chart)}
         <details>
@@ -73,12 +83,12 @@ function weeklyTrainingPanel(sessions) {
                 <td>${formatDuration(week.duration)}</td><td>${week.sessions}</td></tr>`).join('')}</tbody>
           </table></div>
         </details>` : '<p class="muted">Import swims from a completed week to see weekly averages.</p>'}
-      ${current ? `<p><strong>This week so far</strong> · ${formatNumber(current.distance / 1000, 2)} km ·
-        ${formatDuration(current.duration)} swim time · ${current.sessions} ${current.sessions === 1 ? 'swim' : 'swims'}</p>` : ''}
+      ${current || goal ? `<p><strong>This week so far</strong> · ${formatNumber((current?.distance ?? 0) / 1000, 2)} km ·
+        ${formatDuration(current?.duration ?? 0)} swim time · ${current?.sessions ?? 0}${goal ? ` of ${goal}` : ''} ${current?.sessions === 1 && !goal ? 'swim' : 'swims'}</p>` : ''}
     </section>`;
 }
 
-export function trendsPage(sessions) {
+export function trendsPage(sessions, goal = null) {
   const ordered = [...sessions].reverse();
   const distanceTrend = ordered.map(session => ({
     label: formatDate(session.date, { month: 'short', day: 'numeric' }),
@@ -92,7 +102,7 @@ export function trendsPage(sessions) {
   return `
     <div class="pagehead"><div><div class="eyebrow">LAB / 03 / TRENDS</div><h1>Training trends</h1><p>Track changes across sessions, with context.</p></div></div>
     ${metricCards(sessions)}
-    ${weeklyTrainingPanel(sessions)}
+    ${weeklyTrainingPanel(sessions, goal)}
     <div class="twocol">
       <section class="panel">
         <div class="panelhead"><div><h2>Session distance</h2><p>Distance in km</p></div><span class="fig">FIG.1 · KM</span></div>

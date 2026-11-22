@@ -13,6 +13,8 @@ import {
 import { query } from './ui/shared.js';
 import { render, toast, downloadJson } from './ui/render.js';
 
+const WEEKLY_GOAL_KEY = 'myswimlab.weekly-goal';
+
 let importGeneration = 0;
 
 function notifyFailures(failures) {
@@ -197,7 +199,42 @@ async function onChange(event) {
   }
 }
 
+function parseWeeklyGoal(value) {
+  const goal = Number(value);
+  return Number.isSafeInteger(goal) && goal > 0 ? goal : null;
+}
+
+function onSubmit(event) {
+  if (event.target.id !== 'weeklyGoalForm') return;
+  event.preventDefault();
+  const input = query('#weeklyGoal');
+  const goal = parseWeeklyGoal(input.value);
+  if (!input.validity.valid || (input.value !== '' && goal === null)) {
+    toast('Enter a positive whole number of swims.');
+    return;
+  }
+
+  state.weeklyGoal = goal;
+  let message = goal === null ? 'Weekly goal cleared.' : 'Weekly goal saved.';
+  try {
+    if (goal === null) localStorage.removeItem(WEEKLY_GOAL_KEY);
+    else localStorage.setItem(WEEKLY_GOAL_KEY, String(goal));
+  } catch {
+    message = 'Browser storage is unavailable. Your goal change applies to this visit.';
+  }
+  render();
+  query('#weeklyGoal').focus({ preventScroll: true });
+  toast(message);
+}
+
+try {
+  state.weeklyGoal = parseWeeklyGoal(localStorage.getItem(WEEKLY_GOAL_KEY));
+} catch {
+  // The goal remains available for the current visit when storage is blocked.
+}
+
 window.addEventListener('click', onClick);
 window.addEventListener('change', onChange);
 window.addEventListener('input', onInput);
+window.addEventListener('submit', onSubmit);
 render();

@@ -4,6 +4,7 @@ export const state = {
   page: 'overview',
   selectedSessionId: null,
   period: 'all',
+  weeklyGoal: null,
   drafts: new Map()
 };
 

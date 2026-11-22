@@ -407,7 +407,7 @@ tbody tr[data-select]:hover { background: var(--accent-soft); }
 
 /* Forms */
 .fieldlabel { display: block; font-size: 11px; color: var(--ink-3); margin: 14px 0 6px; }
-textarea, input[type=text] {
+textarea, input[type=text], #weeklyGoal {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid var(--line-strong);
@@ -417,6 +417,7 @@ textarea, input[type=text] {
   font-size: 13px;
   resize: vertical;
 }
+#weeklyGoal { width: 7rem; }
 textarea { min-height: 140px; }
 .save { margin-top: 16px; }
 
@@ -1352,6 +1353,7 @@ const state = {
   page: 'overview',
   selectedSessionId: null,
   period: 'all',
+  weeklyGoal: null,
   drafts: new Map()
 };
 
@@ -2011,8 +2013,9 @@ function performancePage(sessions) {
     <p class="fineprint">Different strokes, drills or equipment may not be comparable. Yard pace is /100yd.</p>`;
 }
 
-function weeklyTrainingPanel(sessions) {
+function weeklyTrainingPanel(sessions, goal) {
   const { completed, current, average, activeWeeks } = weeklyTraining(sessions);
+  const weeksAtGoal = goal ? completed.filter(week => week.sessions >= goal).length : 0;
   const chart = completed.slice(-12).map(week => ({
     label: formatDate(week.week, { month: 'short', day: 'numeric' }),
     value: week.distance / 1000
@@ -2023,12 +2026,21 @@ function weeklyTrainingPanel(sessions) {
       <div class="panelhead"><div><h2>Weekly training</h2>
         <p>Monday–Sunday, from the first to the last swim in your selection. Weeks with no imported swims count as zero.</p>
       </div></div>
+      <form id="weeklyGoalForm">
+        <label class="fieldlabel" for="weeklyGoal">Goal (swims per week)</label>
+        <input id="weeklyGoal" type="number" min="1" step="1" value="${goal ?? ''}"
+          aria-describedby="weeklyGoalHelp">
+        <button class="secondary" type="submit">Save goal</button>
+        <p id="weeklyGoalHelp" class="fineprint">Leave blank and save to clear your goal.</p>
+      </form>
       ${average ? `
         <p>Weekly averages · <strong>${formatNumber(average.distance / 1000, 2)} km</strong> ·
           <strong>${formatDuration(average.duration)}</strong> swim time ·
           <strong>${formatNumber(average.sessions, 1)}</strong> swims</p>
         <p>Swam in <strong>${activeWeeks} of ${completed.length} weeks</strong>
           (${formatNumber(activeWeeks / completed.length * 100)}%)</p>
+        ${goal ? `<p>Met your goal in <strong>${weeksAtGoal} of ${completed.length} weeks</strong>
+          (${formatNumber(weeksAtGoal / completed.length * 100)}%).</p>` : ''}
         <p class="muted">Weekly distance in km · ${chart.length < completed.length ? 'Latest 12 completed weeks' : 'Completed weeks'}</p>
         ${barChart(chart)}
         <details>
@@ -2040,12 +2052,12 @@ function weeklyTrainingPanel(sessions) {
                 <td>${formatDuration(week.duration)}</td><td>${week.sessions}</td></tr>`).join('')}</tbody>
           </table></div>
         </details>` : '<p class="muted">Import swims from a completed week to see weekly averages.</p>'}
-      ${current ? `<p><strong>This week so far</strong> · ${formatNumber(current.distance / 1000, 2)} km ·
-        ${formatDuration(current.duration)} swim time · ${current.sessions} ${current.sessions === 1 ? 'swim' : 'swims'}</p>` : ''}
+      ${current || goal ? `<p><strong>This week so far</strong> · ${formatNumber((current?.distance ?? 0) / 1000, 2)} km ·
+        ${formatDuration(current?.duration ?? 0)} swim time · ${current?.sessions ?? 0}${goal ? ` of ${goal}` : ''} ${current?.sessions === 1 && !goal ? 'swim' : 'swims'}</p>` : ''}
     </section>`;
 }
 
-function trendsPage(sessions) {
+function trendsPage(sessions, goal = null) {
   const ordered = [...sessions].reverse();
   const distanceTrend = ordered.map(session => ({
     label: formatDate(session.date, { month: 'short', day: 'numeric' }),
@@ -2059,7 +2071,7 @@ function trendsPage(sessions) {
   return `
     <div class="pagehead"><div><div class="eyebrow">LAB / 03 / TRENDS</div><h1>Training trends</h1><p>Track changes across sessions, with context.</p></div></div>
     ${metricCards(sessions)}
-    ${weeklyTrainingPanel(sessions)}
+    ${weeklyTrainingPanel(sessions, goal)}
     <div class="twocol">
       <section class="panel">
         <div class="panelhead"><div><h2>Session distance</h2><p>Distance in km</p></div><span class="fig">FIG.1 · KM</span></div>
@@ -2167,7 +2179,7 @@ function render() {
     sessions: () => sessionsPage(list),
     'session-detail': () => sessionPage(),
     performance: () => performancePage(list),
-    trends: () => trendsPage(list),
+    trends: () => trendsPage(list, state.weeklyGoal),
     settings: () => settingsPage()
   };
 
@@ -2213,6 +2225,8 @@ function downloadJson(filename, value) {
  * This is intentionally the only module that coordinates all four layers.
  * FIT decoder, analytics, and file importer never import anything from the UI.
  */
+const WEEKLY_GOAL_KEY = 'myswimlab.weekly-goal';
+
 let importGeneration = 0;
 
 function notifyFailures(failures) {
@@ -2397,9 +2411,44 @@ async function onChange(event) {
   }
 }
 
+function parseWeeklyGoal(value) {
+  const goal = Number(value);
+  return Number.isSafeInteger(goal) && goal > 0 ? goal : null;
+}
+
+function onSubmit(event) {
+  if (event.target.id !== 'weeklyGoalForm') return;
+  event.preventDefault();
+  const input = query('#weeklyGoal');
+  const goal = parseWeeklyGoal(input.value);
+  if (!input.validity.valid || (input.value !== '' && goal === null)) {
+    toast('Enter a positive whole number of swims.');
+    return;
+  }
+
+  state.weeklyGoal = goal;
+  let message = goal === null ? 'Weekly goal cleared.' : 'Weekly goal saved.';
+  try {
+    if (goal === null) localStorage.removeItem(WEEKLY_GOAL_KEY);
+    else localStorage.setItem(WEEKLY_GOAL_KEY, String(goal));
+  } catch {
+    message = 'Browser storage is unavailable. Your goal change applies to this visit.';
+  }
+  render();
+  query('#weeklyGoal').focus({ preventScroll: true });
+  toast(message);
+}
+
+try {
+  state.weeklyGoal = parseWeeklyGoal(localStorage.getItem(WEEKLY_GOAL_KEY));
+} catch {
+  // The goal remains available for the current visit when storage is blocked.
+}
+
 window.addEventListener('click', onClick);
 window.addEventListener('change', onChange);
 window.addEventListener('input', onInput);
+window.addEventListener('submit', onSubmit);
 render();
 
 
