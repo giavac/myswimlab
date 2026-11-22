@@ -3,7 +3,7 @@ import { distanceBests } from '../analytics/best-efforts.js';
 import { pace, summary, weekVolumes, formatDate, formatNumber, formatSeconds } from '../analytics/metrics.js';
 import { barChart, lineChart } from './charts.js';
 import { metricCards, emptyState, recentTable, sessionInsight } from './components.js';
-import { escapeHtml, tag } from './shared.js';
+import { escapeHtml } from './shared.js';
 
 function bestEffortsPanel(sessions) {
   const units = [...new Set(sessions.filter(session => session.sport === 'pool')
@@ -40,7 +40,8 @@ export function overview(sessions) {
   if (!sessions.length) {
     return `
       <div class="pagehead"><div>
-        <h1>Swimming overview</h1>
+        <h1>Overview</h1>
+        <span class="kana" lang="ja">がいよう</span>
         <p>Your swimming history, directly from FIT files.</p>
       </div></div>
       ${emptyState('No swimming sessions', 'Select one or more Garmin swimming FIT files to get started.')}`;
@@ -62,29 +63,31 @@ export function overview(sessions) {
   return `
     <div class="pagehead">
       <div>
-        <div class="eyebrow">LAB / 01 / OVERVIEW</div>
-        <h1>Swimming overview</h1>
-        <p>Understand your swimming, not just your distance.</p>
+        <h1>Overview</h1>
+        <span class="kana" lang="ja">がいよう</span>
       </div>
-      ${tag(`${sessions.length} SWIMMING ACTIVITIES`, 'real')}
     </div>
-    ${metricCards(sessions)}
+    ${metricCards(sessions, true)}
 
     <div class="twocol leadcharts">
       <section class="panel">
-        <div class="panelhead"><div><h2>Training volume</h2><p>Weekly swimming distance · kilometers</p></div><span class="fig">FIG.1 · KM / WEEK</span></div>
+        <div class="panelhead"><div><h2>Weekly distance</h2><span class="kana" lang="ja">しゅうごとのきょり</span><p>Kilometers per week</p></div></div>
         ${barChart(volumes)}
       </section>
       <section class="panel">
-        <div class="panelhead"><div><h2>Average pace progression</h2><p>Session-average moving pace · suspect lengths excluded · lower is faster</p></div><span class="fig">FIG.2 · S /100M · ↓ FASTER</span></div>
+        <div class="panelhead"><div><h2>Average pace progression</h2><p>Session-average moving pace · suspect lengths excluded · lower is faster</p></div></div>
         ${lineChart(paceTrend, { unit: 'pace', label: 'Average pace per session' })}
       </section>
     </div>
 
+    <section class="panel">
+      <div class="panelhead"><div><h2>Recent sessions</h2><p>Imported activities · select a row to explore</p></div><button class="subtle" data-page="sessions">All sessions →</button></div>
+      ${recentTable(recent, true)}
+    </section>
     <div class="twocol unequal">
       ${bestEffortsPanel(sessions)}
       <section class="panel insight">
-        <div class="panelhead"><div><h2>What your data says</h2><p>Descriptive findings from your imported history</p></div><span class="fig">OBSERVATION</span></div>
+        <div class="panelhead"><div><h2>What your data says</h2><p>Descriptive findings from your imported history</p></div></div>
         <div class="insight-body">${sessionInsight(sessions)}</div>
         <button class="subtle insight-link" data-page="trends">Explore training trends →</button>
       </section>
@@ -92,7 +95,7 @@ export function overview(sessions) {
 
     <div class="twocol lowercharts">
       <section class="panel">
-        <div class="panelhead"><div><h2>Stroke count across sessions</h2><p>Mean strokes per active pool length · unadjusted</p></div><span class="fig">FIG.3 · STROKES / LENGTH</span></div>
+        <div class="panelhead"><div><h2>Stroke count across sessions</h2><p>Mean strokes per active pool length · unadjusted</p></div></div>
         ${lineChart(strokeTrend, { label: 'Mean strokes per pool length' })}
       </section>
       <section class="panel nextstep">
@@ -109,8 +112,5 @@ export function overview(sessions) {
       </section>
     </div>
 
-    <section class="panel">
-      <div class="panelhead"><div><h2>Recent sessions</h2><p>Imported activities · select a row to explore</p></div><button class="subtle" data-page="sessions">All sessions →</button></div>
-      ${recentTable(recent, true)}
-    </section>`;
+`;
 }

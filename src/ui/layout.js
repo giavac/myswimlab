@@ -3,18 +3,18 @@ import { state } from '../state.js';
 import { icon } from './shared.js';
 
 const NAVIGATION = [
-  ['overview', 'Overview'],
-  ['sessions', 'Sessions'],
-  ['trends', 'Trends'],
-  ['performance', 'Performance curve'],
-  ['settings', 'Data & settings'],
-  ['guide', 'Training guide']
+  ['overview', 'Overview', 'wave'],
+  ['sessions', 'Sessions', 'calendar'],
+  ['trends', 'Trends', 'chart'],
+  ['performance', 'Performance curve', 'curve'],
+  ['settings', 'Data & settings', 'settings'],
+  ['guide', 'Training guide', 'book']
 ];
 
 export function layout() {
-  const navigation = NAVIGATION.map(([page, label], index) => `
-    <button data-page="${page}" class="navitem ${state.page === page ? 'active' : ''}">
-      <span class="navnum">${String(index + 1).padStart(2, '0')}</span>${label}
+  const navigation = NAVIGATION.map(([page, label, symbol]) => `
+    <button data-page="${page}" class="navitem ${state.page === page ? 'active' : ''}"${state.page === page ? ' aria-current="page"' : ''}>
+      ${icon(symbol, 17)}${label}
     </button>`).join('');
   const periods = [
     ['7', '7D'], ['28', '4W'], ['84', '12W'], ['365', '1Y'], ['all', 'All']
@@ -35,7 +35,6 @@ export function layout() {
       </aside>
       <div class="workspace">
         <header class="topbar">
-          <div class="mobilelogo">${icon('wave', 24)} MySwimLab</div>
           <div class="periods">${periods}</div>
           <div class="statusline"><span class="dot">●</span> N=${state.sessions.length} · LOCAL</div>
           <div class="topactions">

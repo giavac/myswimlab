@@ -9,25 +9,25 @@ import { intervals, intervalSets } from '../analytics/intervals.js';
 import { sortedSessions } from '../state.js';
 
 /** An instrument readout. `tone` 'warn' colors the description as a warning. */
-export function metric(title, valueHtml, description, tone = '') {
+export function metric(title, valueHtml, description, tone = '', kana = '') {
   return `
     <article class="metric">
-      <div class="metric-top"><span>${escapeHtml(title)}</span></div>
+      <div class="metric-top"><span>${escapeHtml(title)}</span>${kana ? `<span class="kana" lang="ja">${escapeHtml(kana)}</span>` : ''}</div>
       <strong>${valueHtml}</strong>
       <p class="${tone === 'warn' ? 'warn' : ''}">${escapeHtml(description)}</p>
     </article>`;
 }
 
-export function metricCards(sessions) {
+export function metricCards(sessions, showKana = false) {
   const total = summary(sessions);
   const pool = sessions.filter(session => session.sport === 'pool').length;
   return `
     <div class="metrics">
-      ${metric('Dist · total', `${formatNumber(total.distance / 1000, 2)} <small>km</small>`, `Σ ${total.sessions} ${total.sessions === 1 ? 'session' : 'sessions'}`)}
+      ${metric('Distance', `${formatNumber(total.distance / 1000, 2)} <small>km</small>`, 'Total distance', '', showKana ? 'きょり' : '')}
+      ${metric('Swim time', formatDuration(total.duration), 'Moving time', '', showKana ? 'じかん' : '')}
       ${metric('Sessions', formatNumber(total.sessions), `pool ${pool} · open water ${total.sessions - pool}`)}
       ${metric(total.excluded ? 'Pace · filtered' : 'Pace · average', `${formatSeconds(total.pace)} <small>/100m</small>`, total.excluded ? `▲ ${total.excluded} suspect ${total.excluded === 1 ? 'length' : 'lengths'} excluded · totals unchanged` : 'Moving time, distance weighted', total.excluded ? 'warn' : '')}
       ${metric('Strokes / length', formatNumber(total.stroke, 1), total.strokeLengths ? `μ · n=${formatNumber(total.strokeLengths)} lengths` : 'No stroke data')}
-      ${metric('Swim time', formatDuration(total.duration), 'Moving time')}
     </div>`;
 }
 

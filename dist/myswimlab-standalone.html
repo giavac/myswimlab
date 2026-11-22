@@ -5,59 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MySwimLab v0.1.0</title>
   <style>
-/*
- * MySwimLab: instrument-console theme.
- * Light "lab notebook" by default; dark console when the system prefers dark.
- * All colors are tokens. System fonts only: the app makes no external requests.
- */
+/* Warm instrument display with graphite navigation and system fonts. */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
-
-  --bg: #f3f5f1;
-  --bg-grid: #e6ebe8;
-  --panel: #fbfcf9;
-  --field: #ffffff;
-  --line: #d3dce0;
-  --line-strong: #b3c3cc;
-  --line-soft: #e1e7ea;
-  --ink: #13283a;
-  --ink-2: #3f566a;
-  --ink-3: #55697b;
-  --accent: #0b7d84;
+  --bg: #e9e5da;
+  --panel: #f1eee5;
+  --field: #faf7ef;
+  --line: #c5bfb1;
+  --line-strong: #8a8478;
+  --line-soft: #ded8ca;
+  --ink: #242724;
+  --ink-2: #424942;
+  --ink-3: #545851;
+  --accent: #316354;
   --accent-ink: #ffffff;
-  --accent-soft: rgba(11, 125, 132, .08);
-  --accent-line: rgba(11, 125, 132, .45);
-  --warn: #8a5a00;
-  --warn-soft: rgba(196, 132, 0, .08);
-  --warn-line: rgba(138, 90, 0, .45);
-  --danger: #a3322e;
-  --focus: #0b7d84;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0a141d;
-    --bg-grid: #0f1f2c;
-    --panel: #0e1c28;
-    --field: #0a141d;
-    --line: #1e3444;
-    --line-strong: #2a4a5c;
-    --line-soft: #1a2f3e;
-    --ink: #dbe7ef;
-    --ink-2: #93aabb;
-    --ink-3: #7891a5;
-    --accent: #3fd0c9;
-    --accent-ink: #0a141d;
-    --accent-soft: rgba(63, 208, 201, .10);
-    --accent-line: rgba(63, 208, 201, .45);
-    --warn: #f2b134;
-    --warn-soft: rgba(242, 177, 52, .07);
-    --warn-line: rgba(242, 177, 52, .45);
-    --danger: #ff8a80;
-    --focus: #3fd0c9;
-  }
+  --accent-soft: #dfe8de;
+  --accent-line: #638576;
+  --warn: #805104;
+  --warn-soft: #eee1c9;
+  --warn-line: #a9834d;
+  --danger: #9a362a;
+  --focus: #316354;
+  --signal: #ec892f;
+  --signal-edge: #a84c10;
+  --graphite: #212625;
 }
 
 * { box-sizing: border-box; }
@@ -67,10 +40,6 @@ body {
   font-family: var(--sans);
   color: var(--ink);
   background-color: var(--bg);
-  background-image:
-    linear-gradient(var(--bg-grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
-  background-size: 32px 32px;
   font-synthesis: none;
 }
 
@@ -83,10 +52,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 a { color: var(--accent); }
 
 h1, h2, h3, p { margin-top: 0; }
-h1 { font-size: 32px; font-weight: 500; letter-spacing: -.01em; margin-bottom: 6px; }
-h2 { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+h1 { font-size: clamp(28px, 4vw, 46px); font-weight: 800; letter-spacing: .035em; text-transform: uppercase; margin-bottom: 6px; }
+h2 { font-size: 17px; font-weight: 750; margin-bottom: 4px; }
 h3 { font-size: 14px; font-weight: 500; }
 p { line-height: 1.55; }
+.kana { display: block; color: var(--ink-3); font-family: var(--sans); font-size: 12px; font-weight: 500; letter-spacing: .05em; }
 
 /* Shared instrument typography */
 .eyebrow, .breadcrumb, .fig, .metric-top, th, .tag, .navitem, .periods button,
@@ -108,7 +78,14 @@ p { line-height: 1.55; }
 .sidebar {
   width: 236px;
   min-width: 236px;
-  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  --ink: #f5f0e4;
+  --ink-2: #e3dfd3;
+  --ink-3: #b9c0b8;
+  --accent: #edb478;
+  --focus: #f6aa61;
+  background: var(--graphite);
+  color: var(--ink);
+  overflow-y: auto;
   border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
@@ -141,10 +118,7 @@ p { line-height: 1.55; }
   font-size: 12px;
 }
 .navitem:hover { border-color: var(--line-strong); }
-.navitem.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-line); }
-.navnum { color: var(--ink-3); }
-.navitem.active .navnum { color: var(--accent); }
-.navnum::after { content: " ·"; }
+.navitem.active { background: #383e3b; color: var(--ink); border-left: 3px solid var(--signal); padding-left: 10px; }
 .asidefoot { margin: auto 20px 24px; font-size: 11px; line-height: 1.7; }
 .asidefoot p { font-size: 12px; color: var(--ink-3); margin: 10px 0 12px; line-height: 1.5; }
 .privacy { color: var(--accent); font-size: 11px; }
@@ -186,7 +160,6 @@ p { line-height: 1.55; }
 }
 .statusline .dot { color: var(--accent); }
 .topactions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
-.mobilelogo { display: none; }
 
 main { padding: 32px; max-width: 1400px; width: 100%; margin: 0 auto; flex: 1; }
 footer {
@@ -210,6 +183,7 @@ footer a { color: var(--accent); }
   justify-content: center;
   gap: 8px;
 }
+.primary.upload { border: 1px solid var(--signal-edge); background: var(--signal); color: #242018; }
 .primary:hover { filter: brightness(1.08); }
 .secondary {
   min-height: 40px;
@@ -237,30 +211,17 @@ footer a { color: var(--accent); }
 .eyebrow, .breadcrumb { font-size: 11px; letter-spacing: .2em; color: var(--ink-3); margin-bottom: 6px; }
 .pageactions { display: flex; align-items: center; gap: 10px; }
 
-/* Panels with corner brackets */
+/* Readouts and panels */
 .metric, .panel {
-  position: relative;
   background: var(--panel);
   border: 1px solid var(--line);
 }
-.metric::before, .metric::after, .panel::before, .panel::after {
-  content: "";
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  border-color: var(--accent);
-  border-style: solid;
-  opacity: .8;
-  pointer-events: none;
-}
-.metric::before, .panel::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
-.metric::after, .panel::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
 
 .metrics { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
 .metrics.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .metric { padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
 .metric-top { font-size: 11px; letter-spacing: .16em; color: var(--ink-3); }
-.metric strong { font-size: 30px; font-weight: 400; color: var(--ink); }
+.metric strong { font-size: 30px; font-weight: 700; color: var(--ink); }
 .metric strong small { font-size: 13px; color: var(--ink-2); }
 .metric p { font-size: 11px; color: var(--ink-2); margin: 0; font-family: var(--mono); }
 
@@ -454,8 +415,12 @@ textarea { min-height: 140px; }
   .twocol.unequal { grid-template-columns: 1.2fr 1fr; }
 }
 @media (max-width: 850px) {
-  .sidebar { display: none; }
-  .mobilelogo { display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--accent); }
+  .shell { flex-direction: column; }
+  .sidebar { position: static; width: 100%; min-width: 0; height: auto; }
+  .logo { padding: 12px 16px; }
+  .nav { display: flex; overflow-x: auto; padding: 0 12px 8px; }
+  .navitem { width: auto; flex: 0 0 auto; }
+  .asidefoot { display: none; }
   .topbar { padding: 12px 16px; }
   .twocol, .twocol.unequal { grid-template-columns: 1fr; }
   .metrics, .metrics.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1470,9 +1435,12 @@ function icon(name, size = 20) {
     wave: '<path d="M2 9c4-4 6-4 10 0s6 4 10 0M2 15c4-4 6-4 10 0s6 4 10 0"/>',
     upload: '<path d="M12 16V3m-5 5 5-5 5 5M4 16v4h16v-4"/>',
     calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 2v6M17 2v6M3 11h18"/>',
-    chart: '<path d="M3 21V9m5 12V4m5 17v-9m5 9V2"/>'
+    chart: '<path d="M3 21V9m5 12V4m5 17v-9m5 9V2"/>',
+    curve: '<path d="M3 18l6-6 5 2 7-9"/><circle cx="3" cy="18" r="1"/><circle cx="21" cy="5" r="1"/>',
+    settings: '<path d="M4 6h16M4 12h16M4 18h16M8 4v4m8 2v4m-6 2v4"/>',
+    book: '<path d="M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-3-1-6-1-9 1v15"/>'
   };
-  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">${paths[name] || ''}</svg>`;
+  return `<svg aria-hidden="true" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">${paths[name] || ''}</svg>`;
 }
 
 
@@ -1560,25 +1528,25 @@ function barChart(data) {
 // ===== src/ui/components.js =====
 /** Reusable view fragments. Each accepts data and returns an HTML string. */
 /** An instrument readout. `tone` 'warn' colors the description as a warning. */
-function metric(title, valueHtml, description, tone = '') {
+function metric(title, valueHtml, description, tone = '', kana = '') {
   return `
     <article class="metric">
-      <div class="metric-top"><span>${escapeHtml(title)}</span></div>
+      <div class="metric-top"><span>${escapeHtml(title)}</span>${kana ? `<span class="kana" lang="ja">${escapeHtml(kana)}</span>` : ''}</div>
       <strong>${valueHtml}</strong>
       <p class="${tone === 'warn' ? 'warn' : ''}">${escapeHtml(description)}</p>
     </article>`;
 }
 
-function metricCards(sessions) {
+function metricCards(sessions, showKana = false) {
   const total = summary(sessions);
   const pool = sessions.filter(session => session.sport === 'pool').length;
   return `
     <div class="metrics">
-      ${metric('Dist · total', `${formatNumber(total.distance / 1000, 2)} <small>km</small>`, `Σ ${total.sessions} ${total.sessions === 1 ? 'session' : 'sessions'}`)}
+      ${metric('Distance', `${formatNumber(total.distance / 1000, 2)} <small>km</small>`, 'Total distance', '', showKana ? 'きょり' : '')}
+      ${metric('Swim time', formatDuration(total.duration), 'Moving time', '', showKana ? 'じかん' : '')}
       ${metric('Sessions', formatNumber(total.sessions), `pool ${pool} · open water ${total.sessions - pool}`)}
       ${metric(total.excluded ? 'Pace · filtered' : 'Pace · average', `${formatSeconds(total.pace)} <small>/100m</small>`, total.excluded ? `▲ ${total.excluded} suspect ${total.excluded === 1 ? 'length' : 'lengths'} excluded · totals unchanged` : 'Moving time, distance weighted', total.excluded ? 'warn' : '')}
       ${metric('Strokes / length', formatNumber(total.stroke, 1), total.strokeLengths ? `μ · n=${formatNumber(total.strokeLengths)} lengths` : 'No stroke data')}
-      ${metric('Swim time', formatDuration(total.duration), 'Moving time')}
     </div>`;
 }
 
@@ -1782,7 +1750,8 @@ function overview(sessions) {
   if (!sessions.length) {
     return `
       <div class="pagehead"><div>
-        <h1>Swimming overview</h1>
+        <h1>Overview</h1>
+        <span class="kana" lang="ja">がいよう</span>
         <p>Your swimming history, directly from FIT files.</p>
       </div></div>
       ${emptyState('No swimming sessions', 'Select one or more Garmin swimming FIT files to get started.')}`;
@@ -1804,29 +1773,31 @@ function overview(sessions) {
   return `
     <div class="pagehead">
       <div>
-        <div class="eyebrow">LAB / 01 / OVERVIEW</div>
-        <h1>Swimming overview</h1>
-        <p>Understand your swimming, not just your distance.</p>
+        <h1>Overview</h1>
+        <span class="kana" lang="ja">がいよう</span>
       </div>
-      ${tag(`${sessions.length} SWIMMING ACTIVITIES`, 'real')}
     </div>
-    ${metricCards(sessions)}
+    ${metricCards(sessions, true)}
 
     <div class="twocol leadcharts">
       <section class="panel">
-        <div class="panelhead"><div><h2>Training volume</h2><p>Weekly swimming distance · kilometers</p></div><span class="fig">FIG.1 · KM / WEEK</span></div>
+        <div class="panelhead"><div><h2>Weekly distance</h2><span class="kana" lang="ja">しゅうごとのきょり</span><p>Kilometers per week</p></div></div>
         ${barChart(volumes)}
       </section>
       <section class="panel">
-        <div class="panelhead"><div><h2>Average pace progression</h2><p>Session-average moving pace · suspect lengths excluded · lower is faster</p></div><span class="fig">FIG.2 · S /100M · ↓ FASTER</span></div>
+        <div class="panelhead"><div><h2>Average pace progression</h2><p>Session-average moving pace · suspect lengths excluded · lower is faster</p></div></div>
         ${lineChart(paceTrend, { unit: 'pace', label: 'Average pace per session' })}
       </section>
     </div>
 
+    <section class="panel">
+      <div class="panelhead"><div><h2>Recent sessions</h2><p>Imported activities · select a row to explore</p></div><button class="subtle" data-page="sessions">All sessions →</button></div>
+      ${recentTable(recent, true)}
+    </section>
     <div class="twocol unequal">
       ${bestEffortsPanel(sessions)}
       <section class="panel insight">
-        <div class="panelhead"><div><h2>What your data says</h2><p>Descriptive findings from your imported history</p></div><span class="fig">OBSERVATION</span></div>
+        <div class="panelhead"><div><h2>What your data says</h2><p>Descriptive findings from your imported history</p></div></div>
         <div class="insight-body">${sessionInsight(sessions)}</div>
         <button class="subtle insight-link" data-page="trends">Explore training trends →</button>
       </section>
@@ -1834,7 +1805,7 @@ function overview(sessions) {
 
     <div class="twocol lowercharts">
       <section class="panel">
-        <div class="panelhead"><div><h2>Stroke count across sessions</h2><p>Mean strokes per active pool length · unadjusted</p></div><span class="fig">FIG.3 · STROKES / LENGTH</span></div>
+        <div class="panelhead"><div><h2>Stroke count across sessions</h2><p>Mean strokes per active pool length · unadjusted</p></div></div>
         ${lineChart(strokeTrend, { label: 'Mean strokes per pool length' })}
       </section>
       <section class="panel nextstep">
@@ -1851,10 +1822,7 @@ function overview(sessions) {
       </section>
     </div>
 
-    <section class="panel">
-      <div class="panelhead"><div><h2>Recent sessions</h2><p>Imported activities · select a row to explore</p></div><button class="subtle" data-page="sessions">All sessions →</button></div>
-      ${recentTable(recent, true)}
-    </section>`;
+`;
 }
 
 
@@ -2304,18 +2272,18 @@ function trainingGuidePage() {
 // ===== src/ui/layout.js =====
 /** Fixed application frame; each navigation action renders into #main. */
 const NAVIGATION = [
-  ['overview', 'Overview'],
-  ['sessions', 'Sessions'],
-  ['trends', 'Trends'],
-  ['performance', 'Performance curve'],
-  ['settings', 'Data & settings'],
-  ['guide', 'Training guide']
+  ['overview', 'Overview', 'wave'],
+  ['sessions', 'Sessions', 'calendar'],
+  ['trends', 'Trends', 'chart'],
+  ['performance', 'Performance curve', 'curve'],
+  ['settings', 'Data & settings', 'settings'],
+  ['guide', 'Training guide', 'book']
 ];
 
 function layout() {
-  const navigation = NAVIGATION.map(([page, label], index) => `
-    <button data-page="${page}" class="navitem ${state.page === page ? 'active' : ''}">
-      <span class="navnum">${String(index + 1).padStart(2, '0')}</span>${label}
+  const navigation = NAVIGATION.map(([page, label, symbol]) => `
+    <button data-page="${page}" class="navitem ${state.page === page ? 'active' : ''}"${state.page === page ? ' aria-current="page"' : ''}>
+      ${icon(symbol, 17)}${label}
     </button>`).join('');
   const periods = [
     ['7', '7D'], ['28', '4W'], ['84', '12W'], ['365', '1Y'], ['all', 'All']
@@ -2336,7 +2304,6 @@ function layout() {
       </aside>
       <div class="workspace">
         <header class="topbar">
-          <div class="mobilelogo">${icon('wave', 24)} MySwimLab</div>
           <div class="periods">${periods}</div>
           <div class="statusline"><span class="dot">●</span> N=${state.sessions.length} · LOCAL</div>
           <div class="topactions">
