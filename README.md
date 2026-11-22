@@ -6,7 +6,7 @@
 
 ## Features
 
-- Import Garmin swimming FIT files manually or select a folder of activities.
+- Import multiple Garmin swimming FIT files at once.
 - Browse sessions and inspect pace, distance, stroke metrics, charts and best recorded efforts.
 - Distinguish swimming time from recorded rest time for pool activities.
 - Flag suspicious lengths conservatively, with manual **Exclude**, **Keep**, and **Reset** overrides. Recorded FIT files and session totals are never modified.
@@ -23,15 +23,15 @@ cd myswimlab
 python3 -m http.server 8000
 ```
 
-Alternatively, download and open **`dist/myswimlab-standalone.html`** directly in a modern browser. This single-file build is generated from the same sources for use without a local HTTP server. Browser folder permissions and persistence vary by browser and origin; use the local HTTP server for the most predictable experience.
+Alternatively, download and open **`dist/myswimlab-standalone.html`** directly in a modern browser. This single-file build is generated from the same sources for use without a local HTTP server. Browser storage behavior varies by browser and origin; use the local HTTP server for the most predictable experience.
 
-The dashboard starts empty. Import your own FIT files to begin. No personal FIT files or example user activities are distributed with this repository.
+The dashboard starts empty. Use **Import FIT files** to select activities. Select them again after reloading the page. No personal FIT files or example user activities are distributed with this repository.
 
 ## Privacy and data storage
 
-FIT data is parsed locally in your browser and **is not uploaded to a MySwimLab server**. No account, analytics tracker, or external API is required. Selected directory handles (where supported), annotations, and full session objects associated with saved annotations or restored backups may be stored in browser IndexedDB. Imported activity history is not automatically restored from those stored objects at startup. Use Settings to clear stored annotations. Exported JSON backups contain activity data and should be treated as private.
+FIT data is parsed locally in your browser and **is not uploaded to a MySwimLab server**. No account, analytics tracker, or external API is required. Annotations and full session objects associated with saved annotations or restored backups may be stored in browser IndexedDB. Imported activity history is not automatically restored from those stored objects at startup. Use Settings to clear stored annotations. Exported JSON backups contain activity data and should be treated as private.
 
-Chrome and Edge can use the File System Access API to select a folder in supported secure contexts. Other browsers may use a folder-input fallback. Folder scans are on demand or at startup when permission allows; they are not continuous. Imports are limited to 300 FIT files per scan/import operation.
+You can select up to 300 FIT files per import. Multiple imports add sessions to the current view.
 
 ## Development
 
@@ -73,7 +73,6 @@ See [the data model](docs/data-model.md) and [outlier filtering notes](docs/OUTL
 - FIT files containing multiple swimming sessions are rejected rather than combined.
 - Swimming-time calculations depend on recorded active length messages; some devices and drills may produce inaccurate data.
 - The automatic outlier rule needs sufficient lengths and stroke data, and may miss errors or flag legitimate efforts. Manual overrides are available.
-- Folder access and persistence depend on browser support and permissions. The app does not watch a directory for changes.
 - Results are informational and not medical or professional coaching advice.
 
 Issues and contributions are welcome. Please use synthetic or anonymized examples in public bug reports; **never attach personal FIT files or exported backups without considering their sensitive metadata**.

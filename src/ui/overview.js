@@ -1,26 +1,9 @@
 /** Main dashboard, built from reusable view fragments. */
-import { state } from '../state.js';
 import { distanceBests } from '../analytics/best-efforts.js';
 import { pace, summary, weekVolumes, formatDate, formatNumber, formatSeconds } from '../analytics/metrics.js';
 import { barChart, lineChart } from './charts.js';
 import { metricCards, emptyState, recentTable, sessionInsight } from './components.js';
 import { escapeHtml, tag } from './shared.js';
-
-function emptyMessage() {
-  switch (state.folderStatus) {
-    case 'permission':
-      return 'The selected folder needs permission again. Click Reconnect to authorize access.';
-    case 'error':
-      return 'The selected folder could not be read. Change the folder or try again.';
-    case 'scanning':
-      return 'Scanning the selected folder for Garmin swimming activities…';
-    case 'ready':
-    case 'temporary':
-      return 'No swimming FIT files were found in this folder. Add a FIT file and choose Refresh.';
-    default:
-      return 'Choose a folder containing Garmin FIT swimming activities. An empty folder shows no sessions.';
-  }
-}
 
 function bestEffortsPanel(sessions) {
   const units = [...new Set(sessions.filter(session => session.sport === 'pool')
@@ -60,7 +43,7 @@ export function overview(sessions) {
         <h1>Swimming overview</h1>
         <p>Your swimming history, directly from FIT files.</p>
       </div></div>
-      ${emptyState('No swimming sessions', emptyMessage())}`;
+      ${emptyState('No swimming sessions', 'Select one or more Garmin swimming FIT files to get started.')}`;
   }
 
   const chronological = [...sessions].reverse();

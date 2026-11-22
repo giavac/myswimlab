@@ -1,5 +1,4 @@
 /** Secondary views: performance, trends, and local-data settings. */
-import { state } from '../state.js';
 import { distanceBests } from '../analytics/best-efforts.js';
 import { formatDate, formatSeconds, summary } from '../analytics/metrics.js';
 import { lineChart } from './charts.js';
@@ -75,32 +74,25 @@ export function trendsPage(sessions) {
 }
 
 export function settingsPage() {
-  const folderName = state.folderName ? escapeHtml(state.folderName) : 'No folder selected';
-  const folderActions = state.folderHandle ? `
-    <button class="secondary" data-folder-refresh="true">Refresh folder</button>
-    <button class="danger-lite" data-folder-forget="true">Forget folder</button>` : '';
-
   return `
     <div class="pagehead"><div><div class="eyebrow">LAB / 05 / DATA</div><h1>Data & settings</h1><p>Local FIT analysis without cloud synchronization.</p></div></div>
     <div class="twocol">
       <section class="panel">
-        <h2>FIT source folder</h2>
-        <p class="muted">${folderName}</p>
-        <p class="muted">The folder is scanned at startup when permission is available. Use Refresh to detect new or removed FIT files. Continuous filesystem watching is not enabled.</p>
+        <h2>FIT imports</h2>
+        <p class="muted">Select up to 300 FIT files at a time. Import your files again after reloading this page.</p>
         <div class="buttonstack">
-          <button class="primary" data-folder-select="true">Choose / change folder</button>
-          ${folderActions}
+          <button class="primary" data-upload="true">Import FIT files</button>
         </div>
       </section>
       <section class="panel">
         <h2>Privacy & backup</h2>
-        <p class="muted">FIT files are processed locally, not uploaded. The folder handle remains in browser storage. Saving notes, length-quality decisions, or restoring a backup also stores a full copy of each affected session (including length data) in IndexedDB.</p>
+        <p class="muted">FIT files are processed locally, not uploaded. Saving notes, length-quality decisions, or restoring a backup also stores a full copy of each affected session (including length data) in IndexedDB.</p>
         <div class="buttonstack">
           <button class="secondary" data-export="true">Export JSON backup</button>
           <button class="secondary" data-restore="true">Restore JSON backup</button>
           <button class="danger-lite" data-clear="true">Clear saved annotations and length decisions</button>
         </div>
-        <p class="fineprint">Forgetting a folder or clearing annotations never deletes FIT files. Permissions may expire; private windows do not retain settings.</p>
+        <p class="fineprint">Clearing annotations only affects browser storage.</p>
       </section>
     </div>`;
 }

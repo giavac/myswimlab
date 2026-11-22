@@ -61,9 +61,6 @@ export function sessionPage() {
     ? { from: bandPoints[0], to: bandPoints[bandPoints.length - 1], label: `PB ${longestBest.distance} ${unit}` }
     : null;
   const baseline = qualityBaseline(session);
-  const removeButton = state.sourceMode === 'manual'
-    ? `<button class="danger-lite" data-delete="${escapeHtml(session.id)}">Remove session</button>`
-    : '';
 
   return `
     <div class="pagehead">
@@ -74,7 +71,7 @@ export function sessionPage() {
         ${personalBests.length ? tag(`◆ Personal best × ${personalBests.length}`, 'pb') : ''}
       </div>
       <div class="pageactions">
-        ${removeButton}
+        <button class="danger-lite" data-delete="${escapeHtml(session.id)}">Remove session</button>
         <button class="subtle" data-page="sessions">All sessions</button>
       </div>
     </div>

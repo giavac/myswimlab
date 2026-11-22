@@ -1,10 +1,6 @@
 /** The in-memory state is the only source of data displayed by the dashboard. */
 export const state = {
-  sessions: [],               // Current folder contents, or explicitly imported files
-  sourceMode: 'folder',        // 'folder' | 'manual'
-  folderHandle: null,
-  folderName: '',
-  folderStatus: 'unselected',  // unselected | scanning | ready | permission | error | temporary
+  sessions: [],
   page: 'overview',
   selectedSessionId: null,
   period: 'all',
@@ -30,9 +26,8 @@ export function visibleSessions() {
   return sessions.filter(session => lastDate - new Date(session.date).getTime() < intervalMs);
 }
 
-export function replaceSessions(sessions, sourceMode) {
+export function replaceSessions(sessions) {
   state.sessions = sessions;
-  state.sourceMode = sourceMode;
   state.selectedSessionId = null;
   state.page = 'overview';
   state.period = 'all';

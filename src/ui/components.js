@@ -50,8 +50,7 @@ export function emptyState(title, message) {
       <h3>${escapeHtml(title)}</h3>
       <p>${escapeHtml(message)}</p>
       <div class="buttonstack">
-        <button class="primary" data-folder-select="true">${icon('upload', 17)} Choose FIT folder</button>
-        <button class="secondary" data-upload="true">Import individual FIT files</button>
+        <button class="primary" data-upload="true">${icon('upload', 17)} Import FIT files</button>
       </div>
     </div>`;
 }

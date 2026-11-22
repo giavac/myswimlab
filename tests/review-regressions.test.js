@@ -5,7 +5,7 @@ import { parseFit } from '../src/fit/swimming-parser.js';
 import { distanceBests } from '../src/analytics/best-efforts.js';
 import { weekVolumes, formatDate } from '../src/analytics/metrics.js';
 import { validateBackup } from '../src/data/backup.js';
-import { parseFitFiles } from '../src/data/folder-source.js';
+import { parseFitFiles } from '../src/data/fit-import.js';
 import { sessionsPage } from '../src/ui/sessions-list.js';
 import { makeFit } from './fit-fixture.js';
 import { state } from '../src/state.js';
@@ -121,8 +121,8 @@ test('backup validation checks all sessions before a database transaction', () =
   assert.throws(() => validateBackup({format:'myswimlab', sessions:[valid, valid]}), /Duplicate session/);
 });
 
-test('the 300 FIT-file limit also applies to manual imports', async () => {
-  const files = Array.from({length:301}, (_, i) => ({file:{name:`${i}.fit`},path:`${i}.fit`}));
+test('the 300 FIT-file limit applies to manual imports', async () => {
+  const files = Array.from({length:301}, (_, i) => ({name:`${i}.fit`}));
   await assert.rejects(parseFitFiles(files), /over 300 FIT files/);
 });
 

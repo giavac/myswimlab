@@ -7,7 +7,6 @@
 const DATABASE_NAME = 'myswimlab-local-v1'; // Keep name for v0.3.1 compatibility
 const DATABASE_VERSION = 2;
 const SESSION_STORE = 'sessions';
-const CONFIG_STORE = 'configuration';
 
 function openDatabase() {
   return new Promise((resolve, reject) => {
@@ -17,9 +16,6 @@ function openDatabase() {
       const database = request.result;
       if (!database.objectStoreNames.contains(SESSION_STORE)) {
         database.createObjectStore(SESSION_STORE, { keyPath: 'id' });
-      }
-      if (!database.objectStoreNames.contains(CONFIG_STORE)) {
-        database.createObjectStore(CONFIG_STORE);
       }
     };
     request.onsuccess = () => {
@@ -64,7 +60,3 @@ export async function saveAnnotationsBatch(sessions) {
 }
 export const deleteAnnotations = id => transaction(SESSION_STORE, 'readwrite', store => store.delete(id));
 export const clearAnnotations = () => transaction(SESSION_STORE, 'readwrite', store => store.clear());
-
-export const loadFolderHandle = () => transaction(CONFIG_STORE, 'readonly', store => store.get('fit-folder'));
-export const saveFolderHandle = handle => transaction(CONFIG_STORE, 'readwrite', store => store.put(handle, 'fit-folder'));
-export const forgetFolderHandle = () => transaction(CONFIG_STORE, 'readwrite', store => store.delete('fit-folder'));
