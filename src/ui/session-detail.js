@@ -78,19 +78,19 @@ export function sessionPage() {
 
     <div class="metrics four">
       ${metric('Distance', `${formatNumber(totals.distance, 2)} <small>m</small>`, totals.excluded ? `FIT total ${formatNumber(session.distance, 2)} m · ${totals.excluded} excluded` : 'Recorded or reconstructed')}
-      ${metric(hasRestExcluded ? 'Swim time' : 'Timer time', formatDuration(totals.duration), totals.duration !== session.duration ? 'Excludes flagged length time and recorded rest' : movingTimeDescription)}
-      ${metric(correctedPace ? 'Pace · adjusted' : 'Pace · average', `${formatSeconds(pace(session))} <small>/100m</small>`, correctedPace ? `▲ ${totals.excluded} suspect ${totals.excluded === 1 ? 'length' : 'lengths'} omitted` : 'Moving pace', correctedPace ? 'warn' : '')}
+      ${metric(hasRestExcluded ? 'Swim time' : 'Timer time', formatDuration(totals.duration), movingTimeDescription)}
+      ${metric(correctedPace ? 'Pace · adjusted' : 'Pace · average', `${formatSeconds(pace(session))} <small>/100m</small>`, correctedPace ? `▲ ${totals.excluded} flagged ${totals.excluded === 1 ? 'length' : 'lengths'} · distance adjusted` : 'Moving pace', correctedPace ? 'warn' : '')}
       ${metric('Δ Stroke drift', drift === null ? '—' : `${drift >= 0 ? '+' : ''}${drift.toFixed(1)} <small>%</small>`, 'Stroke count: last ¼ vs first ¼')}
     </div>
 
     ${hasRestExcluded && session.restDuration > 0 && Number.isFinite(session.timerDuration) &&
       Math.abs(session.duration + session.restDuration - session.timerDuration) < 1 ? `
-      <p class="fineprint">${totals.duration !== session.duration ? 'Recorded swimming' : 'Swimming'} ${formatDuration(session.duration)} + recorded rest ${formatDuration(session.restDuration)} = FIT timer ${formatDuration(session.timerDuration)}.</p>
+      <p class="fineprint">Swimming ${formatDuration(session.duration)} + recorded rest ${formatDuration(session.restDuration)} = FIT timer ${formatDuration(session.timerDuration)}.</p>
     ` : ''}
 
     ${session.sport === 'pool' && workout.length ? `
       <section class="panel" aria-label="Intervals">
-        <div class="panelhead"><div><h2>Intervals</h2><p>Lengths between rest markers · excluded lengths omitted · consecutive equal distances form sets</p></div><span class="fig">${workout.length} INTERVALS</span></div>
+        <div class="panelhead"><div><h2>Intervals</h2><p>Lengths between rest markers · flagged distance removed, swim time retained</p></div><span class="fig">${workout.length} INTERVALS</span></div>
         ${intervalTable(session, workout)}
       </section>
     ` : ''}
@@ -98,7 +98,7 @@ export function sessionPage() {
     ${personalBests.length ? `
       <section class="panel pb-panel" aria-label="Personal bests">
         <b class="panel-label">◆ Personal best · ${personalBests.length} ${personalBests.length === 1 ? 'distance' : 'distances'}</b>
-        <p>Fastest continuous segment among all loaded sessions. Excluded lengths contribute no distance or time. Recorded rests break an effort.</p>
+        <p>Fastest continuous segment among all loaded sessions. Flagged lengths contribute time only. Recorded rests break an effort.</p>
         <div class="tablewrap"><table>
           <thead><tr><th>Dist</th><th>Time</th><th>Pace /100${unitHtml}</th><th>Records</th></tr></thead>
           <tbody>${personalBests.map(effort => `
@@ -113,7 +113,7 @@ export function sessionPage() {
     ${excluded.length ? `
       <section class="panel quality-panel" aria-label="Swimming length data quality">
         <b class="panel-label">▲ Data quality · ${excluded.length} ${excluded.length === 1 ? 'length' : 'lengths'} excluded</b>
-        <p>Excluded from displayed distance, interval totals, pace, and best efforts. Original FIT values remain available. You can override each decision.</p>
+        <p>Flagged lengths contribute time only to swim totals and continuous efforts. You can override each decision.</p>
         <p class="rule">Rule: pace &lt; ${percent(FAST_TIME_RATIO)} of median AND strokes &lt; ${percent(LOW_STROKE_RATIO)} of median.
           ${baseline ? `Session median: ${formatSeconds(baseline.timePerMeter * session.poolMeters)} · ${formatNumber(baseline.strokes, 1)} strokes per length.` : 'Not enough lengths with strokes for a median; only manual decisions apply.'}</p>
         <div class="tablewrap"><table>

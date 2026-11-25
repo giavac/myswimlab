@@ -9,7 +9,7 @@
 - Import multiple Garmin swimming FIT files at once.
 - Browse sessions and inspect pace, distance, stroke metrics, charts and best recorded efforts.
 - Distinguish swimming time from recorded rest time for pool activities.
-- Flag suspicious lengths conservatively, with manual **Exclude**, **Keep**, and **Reset** overrides. Displayed distances and active-length swim times reflect exclusions. Raw FIT values are preserved.
+- Flag suspicious lengths conservatively, with manual **Exclude**, **Keep**, and **Reset** overrides. Displayed distances reflect exclusions, and swim time is retained. Raw FIT values are preserved.
 - Save annotations and export/restore JSON backups in the browser.
 - Keep meter- and yard-pool best efforts separate.
 

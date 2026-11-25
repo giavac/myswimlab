@@ -31,7 +31,7 @@ function bestEffortsPanel(sessions) {
   }).join('');
   return `<section class="panel">
     <div class="panelhead">
-      <div><h2>Best recorded efforts</h2><p>Continuous pool segments · suspect lengths excluded · yards/meters separate</p></div>
+      <div><h2>Best recorded efforts</h2><p>Continuous pool segments · flagged distance removed · yards/meters separate</p></div>
       <button class="subtle" data-page="performance">Detailed curve →</button>
     </div>${tiles}
   </section>`;
@@ -76,7 +76,7 @@ export function overview(sessions) {
         ${barChart(volumes)}
       </section>
       <section class="panel">
-        <div class="panelhead"><div><h2>Average pace progression</h2><p>Session-average moving pace · suspect lengths excluded · lower is faster</p></div></div>
+        <div class="panelhead"><div><h2>Average pace progression</h2><p>Session-average moving pace · flagged distance removed · lower is faster</p></div></div>
         ${lineChart(paceTrend, { unit: 'pace', label: 'Average pace per session' })}
       </section>
     </div>

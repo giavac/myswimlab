@@ -1,7 +1,7 @@
 /**
  * Swim intervals derived from pool lengths. Garmin closes an interval when the
  * swimmer starts a rest, so the active lengths between rest markers are one
- * interval. Pass quality decisions to omit excluded active lengths.
+ * interval. Pass quality decisions to remove excluded distance while retaining time.
  */
 import { active, assessLengths } from './length-quality.js';
 
@@ -21,20 +21,21 @@ export function intervals(session, quality = []) {
       }
       return;
     }
-    if (!active(length) || quality[index]?.excluded) return;
+    if (!active(length)) return;
     if (!current || current.rest !== null) {
       current = { first: index, last: index, lengths: 0, distance: 0, duration: 0, strokes: 0, rest: null };
       result.push(current);
     }
     current.last = index;
+    current.duration += length.duration;
+    if (quality[index]?.excluded) return;
     current.lengths += 1;
     current.distance += length.distance;
-    current.duration += length.duration;
     current.strokes = Number.isFinite(length.strokes) && current.strokes !== null
       ? current.strokes + length.strokes : null;
   });
 
-  return result;
+  return result.filter(interval => interval.lengths > 0);
 }
 
 /** Group consecutive intervals by length count by default, e.g. 5 × 200 m. */

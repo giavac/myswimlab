@@ -26,9 +26,9 @@ activity. **The personal FIT file is not included in this repository.**
 ## Effects
 
 - **Raw totals** (FIT distance, swim time, rest, elapsed) stay unchanged in
-  the source data. Displayed distance and active-length swim time omit flagged
-  lengths. Distance already omitted by the watch is credited toward the correction.
-- Excluded lengths contribute no distance or time to a continuous best effort.
+  the source data. Displayed distance omits flagged lengths and swim time is
+  retained. Distance already omitted by the watch is credited toward the correction.
+- Excluded lengths contribute time and zero distance to a continuous best effort.
   Recorded rests and gaps in the source length indices still break an effort.
 - Per-length pace and stroke charts, stroke statistics, interval totals, and
   weekly volumes use the corrected data.

@@ -40,7 +40,7 @@ export function performancePage(sessions) {
   const shownUnits = units.length ? units : ['m'];
   return `
     <div class="pagehead"><div><div class="eyebrow">LAB / 04 / PERFORMANCE</div><h1>Performance curve</h1>
-      <p>Best continuous training efforts; suspect lengths excluded; meters and yards kept separate.</p>
+      <p>Best continuous training efforts; flagged distance removed; meters and yards kept separate.</p>
     </div></div>
     ${shownUnits.map((unit, index) => effortGroup(sessions, unit, index + 1)).join('')}
     <p class="fineprint">Different strokes, drills or equipment may not be comparable. Yard pace is /100yd.</p>`;
@@ -160,7 +160,7 @@ function setStructurePanel(sessions) {
                   <td>${formatSeconds(set.medianRest)}</td></tr>`).join('')}</tbody>
             </table></div>
           </details>`).join('')}`).join('') : '<p class="muted">Import a pool swim with recorded lengths to see its set structure.</p>'}
-      ${units.length ? '<p class="fineprint">Totals omit excluded lengths. Missing rest markers can make separate repeats look like one continuous bout.</p>' : ''}
+      ${units.length ? '<p class="fineprint">Totals omit flagged distance and retain swim time. Missing rest markers can make separate repeats look like one continuous bout.</p>' : ''}
     </section>`;
 }
 

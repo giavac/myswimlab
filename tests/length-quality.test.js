@@ -56,20 +56,20 @@ test('manual decisions override automatic detection and can exclude otherwise no
   assert.equal(flags[4].excluded, true);
 });
 
-test('suspect lengths contribute no distance or time to continuous best efforts', () => {
+test('shorter splits use retained endpoints and keep time between them', () => {
   const session = exampleSession();
   assert.equal(distanceBests([session], [25])[0].time, 22.688);
   const [best50] = distanceBests([session], [50]);
   assert.equal(best50.time, 22.688 + 29);
 });
 
-test('adjusted pace removes both suspect seconds and distance without changing FIT totals', () => {
+test('adjusted pace removes suspect distance and retains swim time', () => {
   const session = exampleSession();
   const raw = { duration: session.duration, distance: session.distance };
   const totals = paceTotals(session);
   assert.equal(totals.excluded, 1);
   assert.equal(totals.distance, 275);
-  assert.ok(Math.abs(totals.duration - (session.duration - 13.249)) < 0.001);
+  assert.equal(totals.duration, session.duration);
   assert.equal(session.duration, raw.duration);
   assert.equal(session.distance, raw.distance);
   assert.ok(Math.abs(pace(session) - 100 * totals.duration / totals.distance) < 1e-6);
@@ -98,16 +98,31 @@ test('a corrected 1000 m FIT swim contributes 800 m and 1000 m bests', () => {
   };
   const session = parse();
   assert.equal(session.distance, 1050);
-  assert.deepEqual(paceTotals(session), { distance: 1000, duration: 1000, excluded: 2 });
+  assert.deepEqual(paceTotals(session), { distance: 1000, duration: 1010, excluded: 2 });
   assert.equal(weekVolumes([session])[0].value, 1);
   assert.match(recentTable([session]), /<td>1,000 m<\/td>/);
   assert.match(intervalTable(session), /<td>1,000 m<\/td>/);
   const bests = distanceBests([session]);
-  assert.equal(bests.find(best => best.distance === 800).time, 800);
-  assert.equal(bests.find(best => best.distance === 1000).time, 1000);
+  assert.equal(bests.find(best => best.distance === 800).time, 810);
+  assert.equal(bests.find(best => best.distance === 1000).time, 1010);
   assert.equal(distanceBests([parse({ restAfter: [20] })], [800])[0].time, null);
   session.lengthOverrides = { 10: 'keep' };
   assert.equal(paceTotals(session).distance, 1025);
+});
+
+test('a full bout retains flagged time at the edges and an internal split retains flagged time inside it', () => {
+  const session = exampleSession();
+  for (const length of session.lengths) {
+    length.duration = 25;
+    length.strokes = 18;
+  }
+  session.duration = 300;
+  session.lengthOverrides = { 0: 'exclude', 5: 'exclude', 11: 'exclude' };
+
+  const [split, full] = distanceBests([session], [200, 225]);
+  assert.equal(split.time, 225);
+  assert.equal(full.time, 300);
+  assert.match(intervalTable(session), /<td>225 m<\/td>\s*<td>5:00<\/td>/);
 });
 
 test('length table shows quality status and native clickable decisions', () => {

@@ -26,7 +26,7 @@ export function metricCards(sessions, showKana = false) {
       ${metric('Distance', `${formatNumber(total.distance / 1000, 2)} <small>km</small>`, 'Total distance', '', showKana ? 'きょり' : '')}
       ${metric('Swim time', formatDuration(total.duration), 'Moving time', '', showKana ? 'じかん' : '')}
       ${metric('Sessions', formatNumber(total.sessions), `pool ${pool} · open water ${total.sessions - pool}`)}
-      ${metric(total.excluded ? 'Pace · filtered' : 'Pace · average', `${formatSeconds(total.pace)} <small>/100m</small>`, total.excluded ? `▲ ${total.excluded} suspect ${total.excluded === 1 ? 'length' : 'lengths'} excluded` : 'Moving time, distance weighted', total.excluded ? 'warn' : '')}
+      ${metric(total.excluded ? 'Pace · filtered' : 'Pace · average', `${formatSeconds(total.pace)} <small>/100m</small>`, total.excluded ? `▲ ${total.excluded} suspect ${total.excluded === 1 ? 'length' : 'lengths'} · distance adjusted` : 'Moving time, distance weighted', total.excluded ? 'warn' : '')}
       ${metric('Strokes / length', formatNumber(total.stroke, 1), total.strokeLengths ? `μ · n=${formatNumber(total.strokeLengths)} lengths` : 'No stroke data')}
     </div>`;
 }

@@ -70,8 +70,7 @@ export function assessLengths(session) {
 }
 
 /**
- * Derive displayed pool totals from the recorded session and its exclusions.
- * Preserve time from a separate FIT timer or swim-time field.
+ * Correct displayed pool distance while retaining the recorded swim time.
  */
 export function paceTotals(session) {
   const original = { distance: session.distance || 0, duration: session.duration || 0, excluded: 0 };
@@ -80,17 +79,13 @@ export function paceTotals(session) {
   const lengths = session.lengths || [];
   const flags = assessLengths(session);
   let fullDistance = 0;
-  let fullDuration = 0;
   let removedDistance = 0;
-  let removedDuration = 0;
   let excluded = 0;
   lengths.forEach((length, index) => {
     if (!active(length)) return;
     fullDistance += length.distance;
-    fullDuration += length.duration;
     if (flags[index].excluded) {
       removedDistance += length.distance;
-      removedDuration += length.duration;
       excluded++;
     }
   });
@@ -100,11 +95,5 @@ export function paceTotals(session) {
   // Keep any distance outside the length records when the FIT total is larger.
   const alreadyOmitted = Math.max(0, fullDistance - original.distance);
   const distance = Math.max(0, original.distance - Math.max(0, removedDistance - alreadyOmitted));
-  const canAdjustTime = session.durationBasis === 'active-lengths' ||
-    (!session.durationBasis && Math.abs(fullDuration - original.duration) <= 0.5);
-  return {
-    distance,
-    duration: canAdjustTime ? Math.max(0, original.duration - removedDuration) : original.duration,
-    excluded
-  };
+  return { distance, duration: original.duration, excluded };
 }

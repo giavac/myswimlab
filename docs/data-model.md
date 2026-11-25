@@ -58,7 +58,8 @@ FIT bytes, device-specific profile fields, or access to the browser.
 - Session IDs continue to use the original FIT timer duration for backward compatibility with previously saved annotations. Time values in old JSON backups are not automatically recalculated; reimport their original FIT files for corrected swimming time.
 - A best continuous effort cannot pass through a rest length or a gap in the
   source length indices. Excluded lengths inside an otherwise continuous effort
-  contribute zero time and distance.
+  contribute time and zero distance. Full bouts also include flagged time at
+  the start and end of the bout.
 - The importer produces one session from a FIT file. Files containing more than
   one swimming session are rejected with an explicit message (rather than
   silently merging lengths). Multi-sport activities are not fully supported.
@@ -82,7 +83,5 @@ recorded distance or duration. See `src/analytics/length-quality.js`.
 
 Displayed distance and aggregate volume remove excluded lengths. If the FIT
 total is already below the sum of recorded lengths, that difference is
-credited toward the correction to avoid double subtraction. An active-length
-swim time is corrected by removing excluded duration. FIT timer and elapsed
-time retain their original values. Raw session objects and their IDs are
+credited toward the correction to avoid double subtraction. Swim time, FIT timer time, and elapsed time retain their original values. Raw session objects and their IDs are
 preserved in storage and backups.
