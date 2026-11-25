@@ -3,8 +3,8 @@ import {
   formatNumber, formatSeconds, formatDuration, formatDate, pace, summary
 } from '../analytics/metrics.js';
 import { icon, escapeHtml, tag, recordNumber } from './shared.js';
-import { assessLengths } from '../analytics/length-quality.js';
-import { distanceBests } from '../analytics/best-efforts.js';
+import { assessLengths, paceTotals } from '../analytics/length-quality.js';
+import { BEST_DISTANCES, distanceBests } from '../analytics/best-efforts.js';
 import { intervals, intervalSets } from '../analytics/intervals.js';
 import { sortedSessions } from '../state.js';
 
@@ -26,7 +26,7 @@ export function metricCards(sessions, showKana = false) {
       ${metric('Distance', `${formatNumber(total.distance / 1000, 2)} <small>km</small>`, 'Total distance', '', showKana ? 'きょり' : '')}
       ${metric('Swim time', formatDuration(total.duration), 'Moving time', '', showKana ? 'じかん' : '')}
       ${metric('Sessions', formatNumber(total.sessions), `pool ${pool} · open water ${total.sessions - pool}`)}
-      ${metric(total.excluded ? 'Pace · filtered' : 'Pace · average', `${formatSeconds(total.pace)} <small>/100m</small>`, total.excluded ? `▲ ${total.excluded} suspect ${total.excluded === 1 ? 'length' : 'lengths'} excluded · totals unchanged` : 'Moving time, distance weighted', total.excluded ? 'warn' : '')}
+      ${metric(total.excluded ? 'Pace · filtered' : 'Pace · average', `${formatSeconds(total.pace)} <small>/100m</small>`, total.excluded ? `▲ ${total.excluded} suspect ${total.excluded === 1 ? 'length' : 'lengths'} excluded` : 'Moving time, distance weighted', total.excluded ? 'warn' : '')}
       ${metric('Strokes / length', formatNumber(total.stroke, 1), total.strokeLengths ? `μ · n=${formatNumber(total.strokeLengths)} lengths` : 'No stroke data')}
     </div>`;
 }
@@ -36,7 +36,7 @@ function personalBestIds() {
   const all = sortedSessions();
   const ids = new Set();
   for (const unit of ['m', 'yd']) {
-    for (const effort of distanceBests(all, [25, 50, 100, 200, 400, 800, 1500], unit)) {
+    for (const effort of distanceBests(all, BEST_DISTANCES, unit)) {
       if (effort.session) ids.add(effort.session.id);
     }
   }
@@ -63,13 +63,14 @@ export function recentTable(sessions, compact = false) {
   const visible = compact ? sessions.slice(0, 6) : sessions;
   const bests = personalBestIds();
   const rows = visible.map(session => {
-    const suspect = assessLengths(session).filter(flag => flag.excluded).length;
+    const totals = paceTotals(session);
+    const suspect = totals.excluded;
     return `
     <tr data-select="${escapeHtml(session.id)}">
       <td>${formatDate(session.date)}</td>
       <td class="strong"><button class="session-link" data-select="${escapeHtml(session.id)}">${escapeHtml(session.title)}</button>${bests.has(session.id) ? ' <span class="pb-mark" title="Holds a current personal best">PB</span>' : ''}</td>
-      <td>${formatNumber(session.distance)} m</td>
-      <td>${formatDuration(session.duration)}</td>
+      <td>${formatNumber(totals.distance, 2)} m</td>
+      <td>${formatDuration(totals.duration)}</td>
       <td>${formatSeconds(pace(session))}</td>
       <td>${formatNumber(summary([session]).stroke, 1)}</td>
       <td class="${suspect ? 'warn' : 'muted'}">${suspect ? `▲ ${suspect}` : '—'}</td>
@@ -131,13 +132,12 @@ export function lengthTable(session) {
 }
 
 /** Workout structure (e.g. "5 × 200 m · 100 m") and one row per interval. */
-export function intervalTable(session) {
-  const sets = intervalSets(intervals(session));
+export function intervalTable(session, recorded = intervals(session, assessLengths(session))) {
+  const sets = intervalSets(recorded);
   if (!sets.length) return '';
 
   const unit = escapeHtml(session.poolUnit || 'm');
-  const pool = session.poolUnit === 'yd' ? session.poolMeters / 0.9144 : session.poolMeters;
-  const distance = interval => interval.lengths * pool;
+  const distance = interval => interval.distance / (session.poolUnit === 'yd' ? 0.9144 : 1);
   const setName = set => `${set.intervals.length > 1 ? `${set.intervals.length} × ` : ''}${formatNumber(distance(set.intervals[0]))} ${unit}`;
 
   const rows = sets.map(set => set.intervals.map((interval, position) => `
@@ -177,7 +177,7 @@ export function sessionInsight(sessions) {
     : `Latest session average is ${formatSeconds(change)} /100m slower.`;
 
   const recent = ordered.slice(-3);
-  const recentDistances = recent.map(session => session.distance);
+  const recentDistances = recent.map(session => paceTotals(session).distance);
   const variability = Math.max(...recentDistances) - Math.min(...recentDistances);
   const context = variability < 200
     ? 'Recent session distances are similar, making volume easier to compare.'

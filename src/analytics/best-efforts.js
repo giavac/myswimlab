@@ -1,13 +1,15 @@
-import { assessLengths } from './length-quality.js';
+import { active, assessLengths } from './length-quality.js';
+
+export const BEST_DISTANCES = [25, 50, 100, 200, 400, 800, 1000, 1500];
 
 /**
  * Find the fastest continuous segments of exactly the requested distances.
  *
  * Input is an array of normalized SwimSession objects, not raw FIT messages.
- * A rest marker, missing length, or invalid duration stops a segment.
+ * Excluded lengths contribute no distance or time. Rests and gaps stop a segment.
  */
 /** @param {string} unit - 'm' or 'yd'; units are never mixed. */
-export function distanceBests(sessions, targets = [25, 50, 100, 200, 400, 800], unit = 'm') {
+export function distanceBests(sessions, targets = BEST_DISTANCES, unit = 'm') {
   const results = [];
 
   for (const target of targets) {
@@ -22,15 +24,16 @@ export function distanceBests(sessions, targets = [25, 50, 100, 200, 400, 800], 
       const flags = assessLengths(session);
       for (let start = 0; start < lengths.length; start++) {
         const first = lengths[start];
-        if (!isActiveLength(first) || flags[start].excluded) continue;
+        if (!active(first) || flags[start].excluded) continue;
 
         let distance = 0;
         let time = 0;
 
         for (let end = start; end < lengths.length; end++) {
           const length = lengths[end];
-          if (!isActiveLength(length) || flags[end].excluded) break;
+          if (!active(length)) break;
           if (end > start && !isConsecutive(lengths[end - 1], length)) break;
+          if (flags[end].excluded) continue;
 
           distance += length.distance;
           time += length.duration;
@@ -51,10 +54,6 @@ export function distanceBests(sessions, targets = [25, 50, 100, 200, 400, 800], 
     results.push(best || { distance: target, distanceMeters: targetMeters, unit, time: null, session: null });
   }
   return results;
-}
-
-function isActiveLength(length) {
-  return length && !length.isRest && length.duration > 0 && length.distance > 0;
 }
 
 function isConsecutive(previous, current) {

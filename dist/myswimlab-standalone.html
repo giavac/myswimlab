@@ -856,45 +856,58 @@ function assessLengths(session) {
 }
 
 /**
- * Return totals suitable for a quality-filtered pace estimate.
- * Only adjust a pool session when active lengths cover the reported FIT
- * swimming distance and duration; otherwise retain the session totals.
+ * Derive displayed pool totals from the recorded session and its exclusions.
+ * Preserve time from a separate FIT timer or swim-time field.
  */
 function paceTotals(session) {
   const original = { distance: session.distance || 0, duration: session.duration || 0, excluded: 0 };
-  if (session.sport !== 'pool' || session.durationBasis !== 'active-lengths') return original;
+  if (session.sport !== 'pool') return original;
 
   const lengths = session.lengths || [];
-  const activeLengths = lengths.filter(active);
-  const fullDistance = activeLengths.reduce((sum, length) => sum + length.distance, 0);
-  const fullDuration = activeLengths.reduce((sum, length) => sum + length.duration, 0);
-  if (Math.abs(fullDistance - session.distance) > 0.5 ||
-      Math.abs(fullDuration - session.duration) > 0.5) return original;
+  const flags = assessLengths(session);
+  let fullDistance = 0;
+  let fullDuration = 0;
+  let removedDistance = 0;
+  let removedDuration = 0;
+  let excluded = 0;
+  lengths.forEach((length, index) => {
+    if (!active(length)) return;
+    fullDistance += length.distance;
+    fullDuration += length.duration;
+    if (flags[index].excluded) {
+      removedDistance += length.distance;
+      removedDuration += length.duration;
+      excluded++;
+    }
+  });
+  if (!excluded) return original;
 
-  const assessments = assessLengths(session);
-  const excluded = lengths.filter((length, index) => active(length) && assessments[index].excluded);
-  if (!excluded.length) return original;
-
-  const removedDistance = excluded.reduce((sum, length) => sum + length.distance, 0);
-  const removedDuration = excluded.reduce((sum, length) => sum + length.duration, 0);
+  // Reconcile what the watch already omitted before subtracting recorded lengths.
+  // Keep any distance outside the length records when the FIT total is larger.
+  const alreadyOmitted = Math.max(0, fullDistance - original.distance);
+  const distance = Math.max(0, original.distance - Math.max(0, removedDistance - alreadyOmitted));
+  const canAdjustTime = session.durationBasis === 'active-lengths' ||
+    (!session.durationBasis && Math.abs(fullDuration - original.duration) <= 0.5);
   return {
-    distance: Math.max(0, session.distance - removedDistance),
-    duration: Math.max(0, session.duration - removedDuration),
-    excluded: excluded.length
+    distance,
+    duration: canAdjustTime ? Math.max(0, original.duration - removedDuration) : original.duration,
+    excluded
   };
 }
 
 
 
 // ===== src/analytics/best-efforts.js =====
+const BEST_DISTANCES = [25, 50, 100, 200, 400, 800, 1000, 1500];
+
 /**
  * Find the fastest continuous segments of exactly the requested distances.
  *
  * Input is an array of normalized SwimSession objects, not raw FIT messages.
- * A rest marker, missing length, or invalid duration stops a segment.
+ * Excluded lengths contribute no distance or time. Rests and gaps stop a segment.
  */
 /** @param {string} unit - 'm' or 'yd'; units are never mixed. */
-function distanceBests(sessions, targets = [25, 50, 100, 200, 400, 800], unit = 'm') {
+function distanceBests(sessions, targets = BEST_DISTANCES, unit = 'm') {
   const results = [];
 
   for (const target of targets) {
@@ -909,15 +922,16 @@ function distanceBests(sessions, targets = [25, 50, 100, 200, 400, 800], unit = 
       const flags = assessLengths(session);
       for (let start = 0; start < lengths.length; start++) {
         const first = lengths[start];
-        if (!isActiveLength(first) || flags[start].excluded) continue;
+        if (!active(first) || flags[start].excluded) continue;
 
         let distance = 0;
         let time = 0;
 
         for (let end = start; end < lengths.length; end++) {
           const length = lengths[end];
-          if (!isActiveLength(length) || flags[end].excluded) break;
+          if (!active(length)) break;
           if (end > start && !isConsecutive(lengths[end - 1], length)) break;
+          if (flags[end].excluded) continue;
 
           distance += length.distance;
           time += length.duration;
@@ -938,10 +952,6 @@ function distanceBests(sessions, targets = [25, 50, 100, 200, 400, 800], unit = 
     results.push(best || { distance: target, distanceMeters: targetMeters, unit, time: null, session: null });
   }
   return results;
-}
-
-function isActiveLength(length) {
-  return length && !length.isRest && length.duration > 0 && length.distance > 0;
 }
 
 function isConsecutive(previous, current) {
@@ -966,11 +976,9 @@ function pace(session) {
 }
 
 function summary(sessions) {
-  const distance = sessions.reduce((total, session) => total + session.distance, 0);
-  const duration = sessions.reduce((total, session) => total + session.duration, 0);
   const qualityTotals = sessions.map(paceTotals);
-  const paceDistance = qualityTotals.reduce((total, item) => total + item.distance, 0);
-  const paceDuration = qualityTotals.reduce((total, item) => total + item.duration, 0);
+  const distance = qualityTotals.reduce((total, item) => total + item.distance, 0);
+  const duration = qualityTotals.reduce((total, item) => total + item.duration, 0);
   const excluded = qualityTotals.reduce((total, item) => total + item.excluded, 0);
   const activeLengths = sessions.flatMap(session => {
     const flags = assessLengths(session);
@@ -987,8 +995,7 @@ function summary(sessions) {
     sessions: sessions.length,
     distance,
     duration,
-    // Keep recorded distance and time intact. Only pace/stroke analytics are filtered.
-    pace: paceDistance > 0 ? paceDuration * 100 / paceDistance : null,
+    pace: distance > 0 ? duration * 100 / distance : null,
     excluded,
     stroke: meanStrokes,
     strokeLengths: lengthsWithStrokes.length, // Sample size for `stroke`.
@@ -1022,8 +1029,9 @@ function weeklyTotals(sessions) {
   for (const session of sessions) {
     const week = localMonday(session.date).getTime();
     const total = totals.get(week) || { distance: 0, duration: 0, sessions: 0 };
-    total.distance += session.distance;
-    total.duration += session.duration;
+    const adjusted = paceTotals(session);
+    total.distance += adjusted.distance;
+    total.duration += adjusted.duration;
     total.sessions++;
     totals.set(week, total);
   }
@@ -1100,14 +1108,14 @@ function formatDate(value, options = { month: 'short', day: 'numeric', year: 'nu
 /**
  * Swim intervals derived from pool lengths. Garmin closes an interval when the
  * swimmer starts a rest, so the active lengths between rest markers are one
- * interval. Values are as recorded: quality decisions do not change them.
+ * interval. Pass quality decisions to omit excluded active lengths.
  */
 /**
  * @returns {{first: number, last: number, lengths: number, distance: number,
  *   duration: number, strokes: number|null, rest: number|null}[]}
  *   `first`/`last` are length indices; distance is meters; times are seconds.
  */
-function intervals(session) {
+function intervals(session, quality = []) {
   const result = [];
   let current = null;
 
@@ -1118,7 +1126,7 @@ function intervals(session) {
       }
       return;
     }
-    if (!active(length)) return;
+    if (!active(length) || quality[index]?.excluded) return;
     if (!current || current.rest !== null) {
       current = { first: index, last: index, lengths: 0, distance: 0, duration: 0, strokes: 0, rest: null };
       result.push(current);
@@ -1185,7 +1193,7 @@ function setsByRepeatDistance(sessions, unit) {
 
   for (const session of sessions) {
     if (session.sport !== 'pool' || (session.poolUnit || 'm') !== unit) continue;
-    const recorded = intervals(session);
+    const recorded = intervals(session, assessLengths(session));
     for (const { intervals: repeats } of intervalSets(recorded, repeatDistance)) {
       const distance = repeatDistance(repeats[0]);
       const group = groups.get(distance) || { distance, totalDistance: 0, duration: 0, sets: [], sessions: new Set() };
@@ -1545,7 +1553,7 @@ function metricCards(sessions, showKana = false) {
       ${metric('Distance', `${formatNumber(total.distance / 1000, 2)} <small>km</small>`, 'Total distance', '', showKana ? 'きょり' : '')}
       ${metric('Swim time', formatDuration(total.duration), 'Moving time', '', showKana ? 'じかん' : '')}
       ${metric('Sessions', formatNumber(total.sessions), `pool ${pool} · open water ${total.sessions - pool}`)}
-      ${metric(total.excluded ? 'Pace · filtered' : 'Pace · average', `${formatSeconds(total.pace)} <small>/100m</small>`, total.excluded ? `▲ ${total.excluded} suspect ${total.excluded === 1 ? 'length' : 'lengths'} excluded · totals unchanged` : 'Moving time, distance weighted', total.excluded ? 'warn' : '')}
+      ${metric(total.excluded ? 'Pace · filtered' : 'Pace · average', `${formatSeconds(total.pace)} <small>/100m</small>`, total.excluded ? `▲ ${total.excluded} suspect ${total.excluded === 1 ? 'length' : 'lengths'} excluded` : 'Moving time, distance weighted', total.excluded ? 'warn' : '')}
       ${metric('Strokes / length', formatNumber(total.stroke, 1), total.strokeLengths ? `μ · n=${formatNumber(total.strokeLengths)} lengths` : 'No stroke data')}
     </div>`;
 }
@@ -1555,7 +1563,7 @@ function personalBestIds() {
   const all = sortedSessions();
   const ids = new Set();
   for (const unit of ['m', 'yd']) {
-    for (const effort of distanceBests(all, [25, 50, 100, 200, 400, 800, 1500], unit)) {
+    for (const effort of distanceBests(all, BEST_DISTANCES, unit)) {
       if (effort.session) ids.add(effort.session.id);
     }
   }
@@ -1582,13 +1590,14 @@ function recentTable(sessions, compact = false) {
   const visible = compact ? sessions.slice(0, 6) : sessions;
   const bests = personalBestIds();
   const rows = visible.map(session => {
-    const suspect = assessLengths(session).filter(flag => flag.excluded).length;
+    const totals = paceTotals(session);
+    const suspect = totals.excluded;
     return `
     <tr data-select="${escapeHtml(session.id)}">
       <td>${formatDate(session.date)}</td>
       <td class="strong"><button class="session-link" data-select="${escapeHtml(session.id)}">${escapeHtml(session.title)}</button>${bests.has(session.id) ? ' <span class="pb-mark" title="Holds a current personal best">PB</span>' : ''}</td>
-      <td>${formatNumber(session.distance)} m</td>
-      <td>${formatDuration(session.duration)}</td>
+      <td>${formatNumber(totals.distance, 2)} m</td>
+      <td>${formatDuration(totals.duration)}</td>
       <td>${formatSeconds(pace(session))}</td>
       <td>${formatNumber(summary([session]).stroke, 1)}</td>
       <td class="${suspect ? 'warn' : 'muted'}">${suspect ? `▲ ${suspect}` : '—'}</td>
@@ -1650,13 +1659,12 @@ function lengthTable(session) {
 }
 
 /** Workout structure (e.g. "5 × 200 m · 100 m") and one row per interval. */
-function intervalTable(session) {
-  const sets = intervalSets(intervals(session));
+function intervalTable(session, recorded = intervals(session, assessLengths(session))) {
+  const sets = intervalSets(recorded);
   if (!sets.length) return '';
 
   const unit = escapeHtml(session.poolUnit || 'm');
-  const pool = session.poolUnit === 'yd' ? session.poolMeters / 0.9144 : session.poolMeters;
-  const distance = interval => interval.lengths * pool;
+  const distance = interval => interval.distance / (session.poolUnit === 'yd' ? 0.9144 : 1);
   const setName = set => `${set.intervals.length > 1 ? `${set.intervals.length} × ` : ''}${formatNumber(distance(set.intervals[0]))} ${unit}`;
 
   const rows = sets.map(set => set.intervals.map((interval, position) => `
@@ -1696,7 +1704,7 @@ function sessionInsight(sessions) {
     : `Latest session average is ${formatSeconds(change)} /100m slower.`;
 
   const recent = ordered.slice(-3);
-  const recentDistances = recent.map(session => session.distance);
+  const recentDistances = recent.map(session => paceTotals(session).distance);
   const variability = Math.max(...recentDistances) - Math.min(...recentDistances);
   const context = variability < 200
     ? 'Recent session distances are similar, making volume easier to compare.'
@@ -1722,7 +1730,7 @@ function bestEffortsPanel(sessions) {
   // "NEW" marks a best set in the most recent session of this view.
   const latestId = [...sessions].sort((a, b) => b.date.localeCompare(a.date))[0]?.id;
   const tiles = groups.map(unit => {
-    const efforts = distanceBests(sessions, [25, 50, 100, 200, 400, 800], unit);
+    const efforts = distanceBests(sessions, BEST_DISTANCES, unit);
     const unitHtml = escapeHtml(unit);
     return `<div class="effort-group">
       ${groups.length > 1 ? `<h3>${unit === 'yd' ? 'Yard pool' : 'Meter pool'}</h3>` : ''}
@@ -1814,7 +1822,7 @@ function overview(sessions) {
           <div>
             <span class="eyebrow">MOST RECENT SWIM</span>
             <h3>${escapeHtml(latest.title)}</h3>
-            <p>${formatDate(latest.date)} · ${formatNumber(latest.distance)} m · ${formatSeconds(pace(latest))}/100m</p>
+            <p>${formatDate(latest.date)} · ${formatNumber(paceTotals(latest).distance, 2)} m · ${formatSeconds(pace(latest))}/100m</p>
           </div>
           <button class="primary" data-open-session="${escapeHtml(latest.id)}">Inspect lengths →</button>
         </div>
@@ -1848,6 +1856,7 @@ function sessionPage() {
   const shown = lengths.map((length, index) => ({ length, index, record: recordNumber(index) }))
     .filter(({ length }, index) => active(length) && !quality[index].excluded);
   const totals = paceTotals(session);
+  const workout = intervals(session, quality);
   const paceByLength = shown.map(({ length, record }) => ({
     label: record, value: length.duration * 100 / length.distance
   }));
@@ -1865,12 +1874,11 @@ function sessionPage() {
   // Current all-time bests across all loaded sessions, not only the selected period.
   const unit = session.poolUnit || 'm';
   const personalBests = session.sport === 'pool'
-    ? distanceBests(sortedSessions(), [25, 50, 100, 200, 400, 800, 1500], unit)
+    ? distanceBests(sortedSessions(), BEST_DISTANCES, unit)
       .filter(effort => effort.session?.id === session.id)
     : [];
   const unitHtml = escapeHtml(unit);
-  // Shade the longest PB segment on the pace chart. Its lengths are all shown,
-  // because a best effort cannot contain a rest or an excluded length.
+  // Shade the retained lengths inside the longest best effort.
   const longestBest = personalBests[personalBests.length - 1];
   const bandPoints = longestBest
     ? shown.map(({ index }, point) => index >= longestBest.start && index <= longestBest.end ? point : -1)
@@ -1896,28 +1904,28 @@ function sessionPage() {
     </div>
 
     <div class="metrics four">
-      ${metric('Distance', `${formatNumber(session.distance)} <small>m</small>`, session.sport === 'pool' ? `${lengths.filter(active).length} lengths · as recorded` : 'Recorded or reconstructed')}
-      ${metric(hasRestExcluded ? 'Swim time' : 'Timer time', formatDuration(session.duration), movingTimeDescription)}
-      ${metric(correctedPace ? 'Pace · filtered' : 'Pace · average', `${formatSeconds(pace(session))} <small>/100m</small>`, correctedPace ? `▲ ${totals.excluded} suspect ${totals.excluded === 1 ? 'length' : 'lengths'} omitted` : 'Moving pace', correctedPace ? 'warn' : '')}
+      ${metric('Distance', `${formatNumber(totals.distance, 2)} <small>m</small>`, totals.excluded ? `FIT total ${formatNumber(session.distance, 2)} m · ${totals.excluded} excluded` : 'Recorded or reconstructed')}
+      ${metric(hasRestExcluded ? 'Swim time' : 'Timer time', formatDuration(totals.duration), totals.duration !== session.duration ? 'Excludes flagged length time and recorded rest' : movingTimeDescription)}
+      ${metric(correctedPace ? 'Pace · adjusted' : 'Pace · average', `${formatSeconds(pace(session))} <small>/100m</small>`, correctedPace ? `▲ ${totals.excluded} suspect ${totals.excluded === 1 ? 'length' : 'lengths'} omitted` : 'Moving pace', correctedPace ? 'warn' : '')}
       ${metric('Δ Stroke drift', drift === null ? '—' : `${drift >= 0 ? '+' : ''}${drift.toFixed(1)} <small>%</small>`, 'Stroke count: last ¼ vs first ¼')}
     </div>
 
     ${hasRestExcluded && session.restDuration > 0 && Number.isFinite(session.timerDuration) &&
       Math.abs(session.duration + session.restDuration - session.timerDuration) < 1 ? `
-      <p class="fineprint">Swimming ${formatDuration(session.duration)} + recorded rest ${formatDuration(session.restDuration)} = FIT timer ${formatDuration(session.timerDuration)}.</p>
+      <p class="fineprint">${totals.duration !== session.duration ? 'Recorded swimming' : 'Swimming'} ${formatDuration(session.duration)} + recorded rest ${formatDuration(session.restDuration)} = FIT timer ${formatDuration(session.timerDuration)}.</p>
     ` : ''}
 
-    ${session.sport === 'pool' && lengths.some(active) ? `
+    ${session.sport === 'pool' && workout.length ? `
       <section class="panel" aria-label="Intervals">
-        <div class="panelhead"><div><h2>Intervals</h2><p>Lengths between rest markers · as recorded · sets group consecutive equal distances</p></div><span class="fig">${intervals(session).length} INTERVALS</span></div>
-        ${intervalTable(session)}
+        <div class="panelhead"><div><h2>Intervals</h2><p>Lengths between rest markers · excluded lengths omitted · consecutive equal distances form sets</p></div><span class="fig">${workout.length} INTERVALS</span></div>
+        ${intervalTable(session, workout)}
       </section>
     ` : ''}
 
     ${personalBests.length ? `
       <section class="panel pb-panel" aria-label="Personal bests">
         <b class="panel-label">◆ Personal best · ${personalBests.length} ${personalBests.length === 1 ? 'distance' : 'distances'}</b>
-        <p>Fastest continuous segment among all loaded sessions. Suspect lengths are excluded.</p>
+        <p>Fastest continuous segment among all loaded sessions. Excluded lengths contribute no distance or time. Recorded rests break an effort.</p>
         <div class="tablewrap"><table>
           <thead><tr><th>Dist</th><th>Time</th><th>Pace /100${unitHtml}</th><th>Records</th></tr></thead>
           <tbody>${personalBests.map(effort => `
@@ -1932,7 +1940,7 @@ function sessionPage() {
     ${excluded.length ? `
       <section class="panel quality-panel" aria-label="Swimming length data quality">
         <b class="panel-label">▲ Data quality · ${excluded.length} ${excluded.length === 1 ? 'length' : 'lengths'} excluded</b>
-        <p>Excluded from pace analytics and best efforts. Original FIT distance, swimming time, and rest records are unchanged. You can override each decision.</p>
+        <p>Excluded from displayed distance, interval totals, pace, and best efforts. Original FIT values remain available. You can override each decision.</p>
         <p class="rule">Rule: pace &lt; ${percent(FAST_TIME_RATIO)} of median AND strokes &lt; ${percent(LOW_STROKE_RATIO)} of median.
           ${baseline ? `Session median: ${formatSeconds(baseline.timePerMeter * session.poolMeters)} · ${formatNumber(baseline.strokes, 1)} strokes per length.` : 'Not enough lengths with strokes for a median; only manual decisions apply.'}</p>
         <div class="tablewrap"><table>
@@ -2005,7 +2013,7 @@ function sessionsPage(sessions) {
 // ===== src/ui/other-pages.js =====
 /** Secondary views: performance, trends, and local-data settings. */
 function effortGroup(sessions, unit, figure) {
-  const targets = [25, 50, 100, 200, 400, 800, 1500];
+  const targets = BEST_DISTANCES;
   const efforts = distanceBests(sessions, targets, unit);
   const curve = efforts.filter(effort => effort.time !== null).map(effort => ({
     label: `${effort.distance}${unit}`,
@@ -2157,7 +2165,7 @@ function setStructurePanel(sessions) {
                   <td>${formatSeconds(set.medianRest)}</td></tr>`).join('')}</tbody>
             </table></div>
           </details>`).join('')}`).join('') : '<p class="muted">Import a pool swim with recorded lengths to see its set structure.</p>'}
-      ${units.length ? '<p class="fineprint">Totals use recorded lengths. Missing rest markers can make separate repeats look like one continuous bout.</p>' : ''}
+      ${units.length ? '<p class="fineprint">Totals omit excluded lengths. Missing rest markers can make separate repeats look like one continuous bout.</p>' : ''}
     </section>`;
 }
 
@@ -2165,7 +2173,7 @@ function trendsPage(sessions, goal = null, paces = {}) {
   const ordered = [...sessions].reverse();
   const distanceTrend = ordered.map(session => ({
     label: formatDate(session.date, { month: 'short', day: 'numeric' }),
-    value: session.distance / 1000
+    value: paceTotals(session).distance / 1000
   }));
   const strokeTrend = ordered.map(session => ({
     label: formatDate(session.date, { month: 'short', day: 'numeric' }),

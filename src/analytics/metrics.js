@@ -9,11 +9,9 @@ export function pace(session) {
 }
 
 export function summary(sessions) {
-  const distance = sessions.reduce((total, session) => total + session.distance, 0);
-  const duration = sessions.reduce((total, session) => total + session.duration, 0);
   const qualityTotals = sessions.map(paceTotals);
-  const paceDistance = qualityTotals.reduce((total, item) => total + item.distance, 0);
-  const paceDuration = qualityTotals.reduce((total, item) => total + item.duration, 0);
+  const distance = qualityTotals.reduce((total, item) => total + item.distance, 0);
+  const duration = qualityTotals.reduce((total, item) => total + item.duration, 0);
   const excluded = qualityTotals.reduce((total, item) => total + item.excluded, 0);
   const activeLengths = sessions.flatMap(session => {
     const flags = assessLengths(session);
@@ -30,8 +28,7 @@ export function summary(sessions) {
     sessions: sessions.length,
     distance,
     duration,
-    // Keep recorded distance and time intact. Only pace/stroke analytics are filtered.
-    pace: paceDistance > 0 ? paceDuration * 100 / paceDistance : null,
+    pace: distance > 0 ? duration * 100 / distance : null,
     excluded,
     stroke: meanStrokes,
     strokeLengths: lengthsWithStrokes.length, // Sample size for `stroke`.
@@ -65,8 +62,9 @@ function weeklyTotals(sessions) {
   for (const session of sessions) {
     const week = localMonday(session.date).getTime();
     const total = totals.get(week) || { distance: 0, duration: 0, sessions: 0 };
-    total.distance += session.distance;
-    total.duration += session.duration;
+    const adjusted = paceTotals(session);
+    total.distance += adjusted.distance;
+    total.duration += adjusted.duration;
     total.sessions++;
     totals.set(week, total);
   }

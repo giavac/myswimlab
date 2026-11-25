@@ -1,7 +1,7 @@
 /**
  * Swim intervals derived from pool lengths. Garmin closes an interval when the
  * swimmer starts a rest, so the active lengths between rest markers are one
- * interval. Values are as recorded: quality decisions do not change them.
+ * interval. Pass quality decisions to omit excluded active lengths.
  */
 import { active, assessLengths } from './length-quality.js';
 
@@ -10,7 +10,7 @@ import { active, assessLengths } from './length-quality.js';
  *   duration: number, strokes: number|null, rest: number|null}[]}
  *   `first`/`last` are length indices; distance is meters; times are seconds.
  */
-export function intervals(session) {
+export function intervals(session, quality = []) {
   const result = [];
   let current = null;
 
@@ -21,7 +21,7 @@ export function intervals(session) {
       }
       return;
     }
-    if (!active(length)) return;
+    if (!active(length) || quality[index]?.excluded) return;
     if (!current || current.rest !== null) {
       current = { first: index, last: index, lengths: 0, distance: 0, duration: 0, strokes: 0, rest: null };
       result.push(current);
@@ -88,7 +88,7 @@ export function setsByRepeatDistance(sessions, unit) {
 
   for (const session of sessions) {
     if (session.sport !== 'pool' || (session.poolUnit || 'm') !== unit) continue;
-    const recorded = intervals(session);
+    const recorded = intervals(session, assessLengths(session));
     for (const { intervals: repeats } of intervalSets(recorded, repeatDistance)) {
       const distance = repeatDistance(repeats[0]);
       const group = groups.get(distance) || { distance, totalDistance: 0, duration: 0, sets: [], sessions: new Set() };

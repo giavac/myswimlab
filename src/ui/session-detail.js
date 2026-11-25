@@ -1,6 +1,6 @@
 /** Inspect one session, with optional browser-local annotations. */
 import { selectedSession, sortedSessions, state } from '../state.js';
-import { distanceBests } from '../analytics/best-efforts.js';
+import { BEST_DISTANCES, distanceBests } from '../analytics/best-efforts.js';
 import { lengthDrift, pace, formatNumber, formatSeconds, formatDuration, formatDate } from '../analytics/metrics.js';
 import { intervals } from '../analytics/intervals.js';
 import { lineChart } from './charts.js';
@@ -29,6 +29,7 @@ export function sessionPage() {
   const shown = lengths.map((length, index) => ({ length, index, record: recordNumber(index) }))
     .filter(({ length }, index) => active(length) && !quality[index].excluded);
   const totals = paceTotals(session);
+  const workout = intervals(session, quality);
   const paceByLength = shown.map(({ length, record }) => ({
     label: record, value: length.duration * 100 / length.distance
   }));
@@ -46,12 +47,11 @@ export function sessionPage() {
   // Current all-time bests across all loaded sessions, not only the selected period.
   const unit = session.poolUnit || 'm';
   const personalBests = session.sport === 'pool'
-    ? distanceBests(sortedSessions(), [25, 50, 100, 200, 400, 800, 1500], unit)
+    ? distanceBests(sortedSessions(), BEST_DISTANCES, unit)
       .filter(effort => effort.session?.id === session.id)
     : [];
   const unitHtml = escapeHtml(unit);
-  // Shade the longest PB segment on the pace chart. Its lengths are all shown,
-  // because a best effort cannot contain a rest or an excluded length.
+  // Shade the retained lengths inside the longest best effort.
   const longestBest = personalBests[personalBests.length - 1];
   const bandPoints = longestBest
     ? shown.map(({ index }, point) => index >= longestBest.start && index <= longestBest.end ? point : -1)
@@ -77,28 +77,28 @@ export function sessionPage() {
     </div>
 
     <div class="metrics four">
-      ${metric('Distance', `${formatNumber(session.distance)} <small>m</small>`, session.sport === 'pool' ? `${lengths.filter(active).length} lengths · as recorded` : 'Recorded or reconstructed')}
-      ${metric(hasRestExcluded ? 'Swim time' : 'Timer time', formatDuration(session.duration), movingTimeDescription)}
-      ${metric(correctedPace ? 'Pace · filtered' : 'Pace · average', `${formatSeconds(pace(session))} <small>/100m</small>`, correctedPace ? `▲ ${totals.excluded} suspect ${totals.excluded === 1 ? 'length' : 'lengths'} omitted` : 'Moving pace', correctedPace ? 'warn' : '')}
+      ${metric('Distance', `${formatNumber(totals.distance, 2)} <small>m</small>`, totals.excluded ? `FIT total ${formatNumber(session.distance, 2)} m · ${totals.excluded} excluded` : 'Recorded or reconstructed')}
+      ${metric(hasRestExcluded ? 'Swim time' : 'Timer time', formatDuration(totals.duration), totals.duration !== session.duration ? 'Excludes flagged length time and recorded rest' : movingTimeDescription)}
+      ${metric(correctedPace ? 'Pace · adjusted' : 'Pace · average', `${formatSeconds(pace(session))} <small>/100m</small>`, correctedPace ? `▲ ${totals.excluded} suspect ${totals.excluded === 1 ? 'length' : 'lengths'} omitted` : 'Moving pace', correctedPace ? 'warn' : '')}
       ${metric('Δ Stroke drift', drift === null ? '—' : `${drift >= 0 ? '+' : ''}${drift.toFixed(1)} <small>%</small>`, 'Stroke count: last ¼ vs first ¼')}
     </div>
 
     ${hasRestExcluded && session.restDuration > 0 && Number.isFinite(session.timerDuration) &&
       Math.abs(session.duration + session.restDuration - session.timerDuration) < 1 ? `
-      <p class="fineprint">Swimming ${formatDuration(session.duration)} + recorded rest ${formatDuration(session.restDuration)} = FIT timer ${formatDuration(session.timerDuration)}.</p>
+      <p class="fineprint">${totals.duration !== session.duration ? 'Recorded swimming' : 'Swimming'} ${formatDuration(session.duration)} + recorded rest ${formatDuration(session.restDuration)} = FIT timer ${formatDuration(session.timerDuration)}.</p>
     ` : ''}
 
-    ${session.sport === 'pool' && lengths.some(active) ? `
+    ${session.sport === 'pool' && workout.length ? `
       <section class="panel" aria-label="Intervals">
-        <div class="panelhead"><div><h2>Intervals</h2><p>Lengths between rest markers · as recorded · sets group consecutive equal distances</p></div><span class="fig">${intervals(session).length} INTERVALS</span></div>
-        ${intervalTable(session)}
+        <div class="panelhead"><div><h2>Intervals</h2><p>Lengths between rest markers · excluded lengths omitted · consecutive equal distances form sets</p></div><span class="fig">${workout.length} INTERVALS</span></div>
+        ${intervalTable(session, workout)}
       </section>
     ` : ''}
 
     ${personalBests.length ? `
       <section class="panel pb-panel" aria-label="Personal bests">
         <b class="panel-label">◆ Personal best · ${personalBests.length} ${personalBests.length === 1 ? 'distance' : 'distances'}</b>
-        <p>Fastest continuous segment among all loaded sessions. Suspect lengths are excluded.</p>
+        <p>Fastest continuous segment among all loaded sessions. Excluded lengths contribute no distance or time. Recorded rests break an effort.</p>
         <div class="tablewrap"><table>
           <thead><tr><th>Dist</th><th>Time</th><th>Pace /100${unitHtml}</th><th>Records</th></tr></thead>
           <tbody>${personalBests.map(effort => `
@@ -113,7 +113,7 @@ export function sessionPage() {
     ${excluded.length ? `
       <section class="panel quality-panel" aria-label="Swimming length data quality">
         <b class="panel-label">▲ Data quality · ${excluded.length} ${excluded.length === 1 ? 'length' : 'lengths'} excluded</b>
-        <p>Excluded from pace analytics and best efforts. Original FIT distance, swimming time, and rest records are unchanged. You can override each decision.</p>
+        <p>Excluded from displayed distance, interval totals, pace, and best efforts. Original FIT values remain available. You can override each decision.</p>
         <p class="rule">Rule: pace &lt; ${percent(FAST_TIME_RATIO)} of median AND strokes &lt; ${percent(LOW_STROKE_RATIO)} of median.
           ${baseline ? `Session median: ${formatSeconds(baseline.timePerMeter * session.poolMeters)} · ${formatNumber(baseline.strokes, 1)} strokes per length.` : 'Not enough lengths with strokes for a median; only manual decisions apply.'}</p>
         <div class="tablewrap"><table>

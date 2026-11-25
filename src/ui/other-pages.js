@@ -1,13 +1,14 @@
 /** Secondary views: performance, trends, and local-data settings. */
 import { intervalPaceBands, setsByRepeatDistance } from '../analytics/intervals.js';
-import { distanceBests } from '../analytics/best-efforts.js';
+import { BEST_DISTANCES, distanceBests } from '../analytics/best-efforts.js';
 import { formatDate, formatDuration, formatNumber, formatSeconds, summary, weeklyTraining } from '../analytics/metrics.js';
+import { paceTotals } from '../analytics/length-quality.js';
 import { barChart, lineChart } from './charts.js';
 import { metricCards } from './components.js';
 import { escapeHtml } from './shared.js';
 
 function effortGroup(sessions, unit, figure) {
-  const targets = [25, 50, 100, 200, 400, 800, 1500];
+  const targets = BEST_DISTANCES;
   const efforts = distanceBests(sessions, targets, unit);
   const curve = efforts.filter(effort => effort.time !== null).map(effort => ({
     label: `${effort.distance}${unit}`,
@@ -159,7 +160,7 @@ function setStructurePanel(sessions) {
                   <td>${formatSeconds(set.medianRest)}</td></tr>`).join('')}</tbody>
             </table></div>
           </details>`).join('')}`).join('') : '<p class="muted">Import a pool swim with recorded lengths to see its set structure.</p>'}
-      ${units.length ? '<p class="fineprint">Totals use recorded lengths. Missing rest markers can make separate repeats look like one continuous bout.</p>' : ''}
+      ${units.length ? '<p class="fineprint">Totals omit excluded lengths. Missing rest markers can make separate repeats look like one continuous bout.</p>' : ''}
     </section>`;
 }
 
@@ -167,7 +168,7 @@ export function trendsPage(sessions, goal = null, paces = {}) {
   const ordered = [...sessions].reverse();
   const distanceTrend = ordered.map(session => ({
     label: formatDate(session.date, { month: 'short', day: 'numeric' }),
-    value: session.distance / 1000
+    value: paceTotals(session).distance / 1000
   }));
   const strokeTrend = ordered.map(session => ({
     label: formatDate(session.date, { month: 'short', day: 'numeric' }),

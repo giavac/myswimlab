@@ -47,7 +47,7 @@ function dataRecord(local, fields, values) {
 export function makeFit({
   durations = [23, 24, 22, 25], restAfter = [], subSport = 17,
   sport = 5, poolMeters = 25, poolUnit = 0, additionalSession = false,
-  omitTimestamps = false, omitSwimTime = false, restSeconds = 10
+  omitTimestamps = false, omitSwimTime = false, restSeconds = 10, strokes = []
 } = {}) {
   const sessionLayout = sessionFields.filter(([number]) =>
     !(omitTimestamps && number === 2) && !(omitSwimTime && number === 78));
@@ -72,7 +72,7 @@ export function makeFit({
   for (let i = 0; i < durations.length; i++) {
     data.push(dataRecord(1, lengthLayout, {
       4: durations[i] * 1000, 3: durations[i] * 1000,
-      5: 20 + i, 12: 1, 254: index++, 2: timestamp + elapsed
+      5: strokes[i] ?? 20 + i, 12: 1, 254: index++, 2: timestamp + elapsed
     }));
     elapsed += durations[i];
     if (restAfter.includes(i)) {
