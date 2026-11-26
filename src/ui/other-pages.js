@@ -40,7 +40,7 @@ export function performancePage(sessions) {
   const shownUnits = units.length ? units : ['m'];
   return `
     <div class="pagehead"><div><div class="eyebrow">LAB / 04 / PERFORMANCE</div><h1>Performance curve</h1>
-      <p>Best continuous training efforts; flagged distance removed; meters and yards kept separate.</p>
+      <p>Best continuous training efforts. Known non-freestyle strokes and marked fins are excluded. Unknown strokes remain eligible.</p>
     </div></div>
     ${shownUnits.map((unit, index) => effortGroup(sessions, unit, index + 1)).join('')}
     <p class="fineprint">Different strokes, drills or equipment may not be comparable. Yard pace is /100yd.</p>`;

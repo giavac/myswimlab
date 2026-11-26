@@ -31,7 +31,7 @@ function bestEffortsPanel(sessions) {
   }).join('');
   return `<section class="panel">
     <div class="panelhead">
-      <div><h2>Best recorded efforts</h2><p>Continuous pool segments · flagged distance removed · yards/meters separate</p></div>
+      <div><h2>Best recorded efforts</h2><p>Continuous pool segments · known other strokes and marked fins excluded</p></div>
       <button class="subtle" data-page="performance">Detailed curve →</button>
     </div>${tiles}
   </section>`;

@@ -92,13 +92,30 @@ export function sessionPage() {
       <section class="panel" aria-label="Intervals">
         <div class="panelhead"><div><h2>Intervals</h2><p>Lengths between rest markers · flagged distance removed, swim time retained</p></div><span class="fig">${workout.length} INTERVALS</span></div>
         ${intervalTable(session, workout)}
+        <form id="lengthContextForm">
+          <div class="buttonstack">
+            <label>First REC <input id="contextFirst" type="number" min="1" max="${lengths.length}" required></label>
+            <label>Last REC <input id="contextLast" type="number" min="1" max="${lengths.length}" required></label>
+            <label>Mark section
+              <select id="contextAction">
+                <option value="fins">Fins used</option>
+                <option value="no-fins">Clear fins marking</option>
+                <option value="Freestyle">Freestyle</option>
+                <option value="Other stroke">Other stroke or drill</option>
+                <option value="recorded">Use recorded stroke</option>
+              </select>
+            </label>
+            <button class="secondary" type="submit">Save marking</button>
+          </div>
+          <p class="fineprint">Choose an interval's REC range above or enter a smaller range. Best efforts skip recorded non-freestyle and lengths marked with fins. Unknown strokes remain eligible until marked.</p>
+        </form>
       </section>
     ` : ''}
 
     ${personalBests.length ? `
       <section class="panel pb-panel" aria-label="Personal bests">
         <b class="panel-label">◆ Personal best · ${personalBests.length} ${personalBests.length === 1 ? 'distance' : 'distances'}</b>
-        <p>Fastest continuous segment among all loaded sessions. Flagged lengths contribute time only. Recorded rests break an effort.</p>
+        <p>Fastest eligible segment among all loaded sessions. Flagged lengths contribute time only. Recorded rests, other strokes, and fins break an effort.</p>
         <div class="tablewrap"><table>
           <thead><tr><th>Dist</th><th>Time</th><th>Pace /100${unitHtml}</th><th>Records</th></tr></thead>
           <tbody>${personalBests.map(effort => `

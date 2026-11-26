@@ -26,6 +26,14 @@ export function validateBackup(value) {
         typeof session.lengthOverrides === 'object' && !Array.isArray(session.lengthOverrides) &&
         Object.entries(session.lengthOverrides).every(([key, decision]) =>
           /^(0|[1-9]\d*)$/.test(key) && ['keep', 'exclude'].includes(decision)))) &&
+      (session.lengthContext === undefined || (session.lengthContext !== null &&
+        typeof session.lengthContext === 'object' && !Array.isArray(session.lengthContext) &&
+        Object.entries(session.lengthContext).every(([key, context]) =>
+          /^(0|[1-9]\d*)$/.test(key) && context !== null &&
+          typeof context === 'object' && !Array.isArray(context) &&
+          Object.keys(context).every(field => field === 'stroke' || field === 'fins') &&
+          [undefined, 'Freestyle', 'Other stroke'].includes(context.stroke) &&
+          [undefined, true].includes(context.fins)))) &&
       (session.equipment === undefined ||
        Array.isArray(session.equipment) && session.equipment.every(e => typeof e === 'string'));
     if (!valid) throw new Error(`Invalid session entry at position ${index + 1}.`);

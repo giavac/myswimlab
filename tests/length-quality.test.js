@@ -139,3 +139,21 @@ test('backup validates saved length decisions', () => {
   session.lengthOverrides = { 5: 'discard-source-file' };
   assert.throws(() => validateBackup({ format: 'myswimlab', sessions: [session] }), /Invalid session/);
 });
+
+test('a faster fin-assisted or non-freestyle 100 m cannot take an unassisted best', () => {
+  const bytes = makeFit({
+    durations: [18, 18, 18, 18, 20, 20, 20, 20, 26, 26, 26, 26],
+    strokeTypes: [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+    restAfter: [3, 7]
+  });
+  const session = parseFit(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), 'mixed.fit');
+  session.lengthContext = { 0: { fins: true }, 1: { fins: true }, 2: { fins: true }, 3: { fins: true } };
+  assert.equal(distanceBests([session], [100])[0].time, 104);
+  assert.match(intervalTable(session), /Freestyle · Fins/);
+  assert.match(lengthTable(session), /Backstroke/);
+  assert.equal(validateBackup({ format: 'myswimlab', sessions: [session] })[0].lengthContext[0].fins, true);
+  session.lengthContext[7] = { stroke: 'Freestyle' };
+  assert.equal(distanceBests([session], [100])[0].time, 80);
+  session.lengthContext[7] = { stroke: '<invalid>' };
+  assert.throws(() => validateBackup({ format: 'myswimlab', sessions: [session] }), /Invalid session/);
+});

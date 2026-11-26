@@ -387,6 +387,17 @@ textarea { min-height: 140px; }
 .empty-symbol { color: var(--accent); }
 .empty h3 { font-size: 18px; margin: 12px 0 0; }
 .empty p { color: var(--ink-2); font-size: 13px; margin: 8px 0 18px; }
+#lengthContextForm .buttonstack { align-items: end; }
+#lengthContextForm label { display: grid; gap: 4px; }
+#lengthContextForm input, #lengthContextForm select {
+  min-height: 40px;
+  border: 1px solid var(--line-strong);
+  background: var(--field);
+  color: var(--ink);
+  padding: 0 8px;
+  font: inherit;
+}
+#lengthContextForm input { width: 6ch; }
 .buttonstack { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
 
 #toast {
@@ -889,10 +900,25 @@ function paceTotals(session) {
 // ===== src/analytics/best-efforts.js =====
 const BEST_DISTANCES = [25, 50, 100, 200, 400, 800, 1000, 1500];
 
+const FIT_STROKES = ['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Drill', 'Mixed', 'Individual medley'];
+
+function lengthContext(session, index) {
+  const length = session.lengths[index];
+  const sequence = Number.isInteger(length.sequence) ? length.sequence : index;
+  const annotation = session.lengthContext?.[sequence];
+  const recorded = Number.isInteger(length.stroke) ? FIT_STROKES[length.stroke] : undefined;
+  return {
+    stroke: annotation?.stroke ?? recorded ?? 'Unknown stroke',
+    fins: annotation?.fins === true
+  };
+}
+
 /**
  * Find the fastest continuous segments of exactly the requested distances.
  *
  * Input is an array of normalized SwimSession objects, not raw FIT messages.
+ * Known non-freestyle and fin-assisted lengths break a segment. Unknown
+ * stroke remains eligible so older imports can still be compared.
  * Excluded lengths contribute time but no distance. Rests and gaps stop a segment.
  */
 /** @param {string} unit - 'm' or 'yd'; units are never mixed. */
@@ -909,16 +935,20 @@ function distanceBests(sessions, targets = BEST_DISTANCES, unit = 'm') {
 
       const lengths = session.lengths || [];
       const flags = assessLengths(session);
+      const eligible = lengths.map((length, index) => {
+        if (!active(length)) return false;
+        const { stroke, fins } = lengthContext(session, index);
+        return !fins && (stroke === 'Freestyle' || stroke === 'Unknown stroke');
+      });
       for (let start = 0; start < lengths.length; start++) {
-        const first = lengths[start];
-        if (!active(first) || flags[start].excluded) continue;
+        if (!eligible[start] || flags[start].excluded) continue;
 
         let distance = 0;
         let time = 0;
 
         for (let end = start; end < lengths.length; end++) {
           const length = lengths[end];
-          if (!active(length)) break;
+          if (!eligible[end]) break;
           if (end > start && !isConsecutive(lengths[end - 1], length)) break;
           time += length.duration;
           if (flags[end].excluded) continue;
@@ -929,8 +959,8 @@ function distanceBests(sessions, targets = BEST_DISTANCES, unit = 'm') {
           if (Math.abs(distance - targetMeters) <= 0.05) {
             // A full bout also includes flagged time at either end. A shorter
             // split uses the time from its first through its last retained length.
-            const before = excludedEdgeTime(lengths, flags, start, -1);
-            const after = excludedEdgeTime(lengths, flags, end, 1);
+            const before = excludedEdgeTime(lengths, flags, eligible, start, -1);
+            const after = excludedEdgeTime(lengths, flags, eligible, end, 1);
             const effortTime = before === null || after === null ? time : time + before + after;
             if (!best || effortTime < best.time) {
               // start and end are indexes into session.lengths (inclusive).
@@ -948,9 +978,9 @@ function distanceBests(sessions, targets = BEST_DISTANCES, unit = 'm') {
   return results;
 }
 
-function excludedEdgeTime(lengths, flags, from, direction) {
+function excludedEdgeTime(lengths, flags, eligible, from, direction) {
   let duration = 0;
-  for (let index = from + direction; active(lengths[index]); index += direction) {
+  for (let index = from + direction; eligible[index]; index += direction) {
     const neighbor = index - direction;
     if (!isConsecutive(lengths[Math.min(index, neighbor)], lengths[Math.max(index, neighbor)])) break;
     if (!flags[index].excluded) return null;
@@ -1309,6 +1339,14 @@ function validateBackup(value) {
         typeof session.lengthOverrides === 'object' && !Array.isArray(session.lengthOverrides) &&
         Object.entries(session.lengthOverrides).every(([key, decision]) =>
           /^(0|[1-9]\d*)$/.test(key) && ['keep', 'exclude'].includes(decision)))) &&
+      (session.lengthContext === undefined || (session.lengthContext !== null &&
+        typeof session.lengthContext === 'object' && !Array.isArray(session.lengthContext) &&
+        Object.entries(session.lengthContext).every(([key, context]) =>
+          /^(0|[1-9]\d*)$/.test(key) && context !== null &&
+          typeof context === 'object' && !Array.isArray(context) &&
+          Object.keys(context).every(field => field === 'stroke' || field === 'fins') &&
+          [undefined, 'Freestyle', 'Other stroke'].includes(context.stroke) &&
+          [undefined, true].includes(context.fins)))) &&
       (session.equipment === undefined ||
        Array.isArray(session.equipment) && session.equipment.every(e => typeof e === 'string'));
     if (!valid) throw new Error(`Invalid session entry at position ${index + 1}.`);
@@ -1631,6 +1669,7 @@ function lengthTable(session) {
   const flags = assessLengths(session);
   const rows = lengths.map((length, index) => {
     const flag = flags[index];
+    const context = length.isRest ? null : lengthContext(session, index);
     const sequence = Number.isInteger(length.sequence) ? length.sequence : index;
     const status = flag.manual === 'keep' ? 'Kept manually'
       : flag.manual === 'exclude' ? 'Excluded manually'
@@ -1646,7 +1685,7 @@ function lengthTable(session) {
     return `
       <tr id="length-${index}" class="${flag.excluded ? 'excluded-length' : ''}">
         <td>${flag.excluded ? '▲ ' : ''}${recordNumber(index)}</td>
-        <td>${length.isRest ? tag('Rest') : tag('Swim', 'real')}</td>
+        <td>${context ? `${escapeHtml(context.stroke)}${context.fins ? ' · Fins' : ''}` : tag('Rest')}</td>
         <td>${formatSeconds(length.duration)}</td>
         <td>${length.isRest || !length.distance ? '—' : formatSeconds(length.duration * 100 / length.distance)}</td>
         <td>${formatNumber(length.strokes)}</td>
@@ -1658,7 +1697,7 @@ function lengthTable(session) {
   return `
     <div class="length-scroll">
       <table>
-        <thead><tr><th>Rec</th><th>Type</th><th>Duration</th><th>Pace</th><th>Strokes</th><th>Cadence</th><th>Quality control</th></tr></thead>
+        <thead><tr><th>Rec</th><th>Stroke / equipment</th><th>Duration</th><th>Pace</th><th>Strokes</th><th>Cadence</th><th>Quality control</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>`;
@@ -1673,7 +1712,13 @@ function intervalTable(session, recorded = intervals(session, assessLengths(sess
   const distance = interval => interval.distance / (session.poolUnit === 'yd' ? 0.9144 : 1);
   const setName = set => `${set.intervals.length > 1 ? `${set.intervals.length} × ` : ''}${formatNumber(distance(set.intervals[0]))} ${unit}`;
 
-  const rows = sets.map(set => set.intervals.map((interval, position) => `
+  const rows = sets.map(set => set.intervals.map((interval, position) => {
+    const context = session.lengths.slice(interval.first, interval.last + 1)
+      .map((_, offset) => lengthContext(session, interval.first + offset));
+    const strokes = new Set(context.map(length => length.stroke));
+    const stroke = strokes.size === 1 ? strokes.values().next().value : 'Mixed strokes';
+    const fins = context.filter(length => length.fins).length;
+    return `
       <tr class="interval-row${position === 0 ? ' set-start' : ''}">
         <td class="set-name">${position === 0 ? setName(set) : ''}</td>
         <td>${position + 1}</td>
@@ -1681,14 +1726,18 @@ function intervalTable(session, recorded = intervals(session, assessLengths(sess
         <td>${formatSeconds(interval.duration)}</td>
         <td>${formatSeconds(interval.duration * 100 / distance(interval))}</td>
         <td>${formatNumber(interval.strokes)}</td>
+        <td>${escapeHtml(stroke)}${fins === context.length ? ' · Fins' : fins ? ' · Some lengths with fins' : ''}
+          <button type="button" class="quality-jump" data-context-first="${interval.first + 1}"
+            data-context-last="${interval.last + 1}">Edit REC ${recordNumber(interval.first)}–${recordNumber(interval.last)}</button></td>
         <td>${formatSeconds(interval.rest)}</td>
         <td>${interval.rest === null ? '—' : formatSeconds(interval.duration + interval.rest)}</td>
-      </tr>`).join('')).join('');
+      </tr>`;
+  }).join('')).join('');
 
   return `
     <p class="interval-summary">${sets.map(setName).join(' · ')}</p>
     <div class="tablewrap"><table>
-      <thead><tr><th>Set</th><th>#</th><th>Dist</th><th>Time</th><th>Pace /100${unit}</th><th>Strokes</th><th>Rest after</th><th>Restart after</th></tr></thead>
+      <thead><tr><th>Set</th><th>#</th><th>Dist</th><th>Time</th><th>Pace /100${unit}</th><th>Strokes</th><th>Stroke / equipment</th><th>Rest after</th><th>Restart after</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
 }
@@ -1754,7 +1803,7 @@ function bestEffortsPanel(sessions) {
   }).join('');
   return `<section class="panel">
     <div class="panelhead">
-      <div><h2>Best recorded efforts</h2><p>Continuous pool segments · flagged distance removed · yards/meters separate</p></div>
+      <div><h2>Best recorded efforts</h2><p>Continuous pool segments · known other strokes and marked fins excluded</p></div>
       <button class="subtle" data-page="performance">Detailed curve →</button>
     </div>${tiles}
   </section>`;
@@ -1925,13 +1974,30 @@ function sessionPage() {
       <section class="panel" aria-label="Intervals">
         <div class="panelhead"><div><h2>Intervals</h2><p>Lengths between rest markers · flagged distance removed, swim time retained</p></div><span class="fig">${workout.length} INTERVALS</span></div>
         ${intervalTable(session, workout)}
+        <form id="lengthContextForm">
+          <div class="buttonstack">
+            <label>First REC <input id="contextFirst" type="number" min="1" max="${lengths.length}" required></label>
+            <label>Last REC <input id="contextLast" type="number" min="1" max="${lengths.length}" required></label>
+            <label>Mark section
+              <select id="contextAction">
+                <option value="fins">Fins used</option>
+                <option value="no-fins">Clear fins marking</option>
+                <option value="Freestyle">Freestyle</option>
+                <option value="Other stroke">Other stroke or drill</option>
+                <option value="recorded">Use recorded stroke</option>
+              </select>
+            </label>
+            <button class="secondary" type="submit">Save marking</button>
+          </div>
+          <p class="fineprint">Choose an interval's REC range above or enter a smaller range. Best efforts skip recorded non-freestyle and lengths marked with fins. Unknown strokes remain eligible until marked.</p>
+        </form>
       </section>
     ` : ''}
 
     ${personalBests.length ? `
       <section class="panel pb-panel" aria-label="Personal bests">
         <b class="panel-label">◆ Personal best · ${personalBests.length} ${personalBests.length === 1 ? 'distance' : 'distances'}</b>
-        <p>Fastest continuous segment among all loaded sessions. Flagged lengths contribute time only. Recorded rests break an effort.</p>
+        <p>Fastest eligible segment among all loaded sessions. Flagged lengths contribute time only. Recorded rests, other strokes, and fins break an effort.</p>
         <div class="tablewrap"><table>
           <thead><tr><th>Dist</th><th>Time</th><th>Pace /100${unitHtml}</th><th>Records</th></tr></thead>
           <tbody>${personalBests.map(effort => `
@@ -2051,7 +2117,7 @@ function performancePage(sessions) {
   const shownUnits = units.length ? units : ['m'];
   return `
     <div class="pagehead"><div><div class="eyebrow">LAB / 04 / PERFORMANCE</div><h1>Performance curve</h1>
-      <p>Best continuous training efforts; flagged distance removed; meters and yards kept separate.</p>
+      <p>Best continuous training efforts. Known non-freestyle strokes and marked fins are excluded. Unknown strokes remain eligible.</p>
     </div></div>
     ${shownUnits.map((unit, index) => effortGroup(sessions, unit, index + 1)).join('')}
     <p class="fineprint">Different strokes, drills or equipment may not be comparable. Yard pace is /100yd.</p>`;
@@ -2417,6 +2483,7 @@ async function restoreAnnotations(sessions) {
         session.notes = old.notes || '';
         session.equipment = old.equipment || [];
         session.lengthOverrides = old.lengthOverrides || {};
+        session.lengthContext = old.lengthContext || {};
       }
     }
   } catch (error) {
@@ -2465,9 +2532,10 @@ async function clearSavedNotes() {
     session.notes = '';
     session.equipment = [];
     session.lengthOverrides = {};
+    session.lengthContext = {};
   }
   render();
-  toast('Saved annotations and length decisions cleared.');
+  toast('Saved annotations cleared.');
 }
 
 async function restoreBackup(file) {
@@ -2524,6 +2592,10 @@ async function onClick(event) {
     state.selectedSessionId = data.openSession || data.select;
     state.page = 'session-detail';
     render();
+  } else if (data.contextFirst) {
+    query('#contextFirst').value = data.contextFirst;
+    query('#contextLast').value = data.contextLast;
+    query('#contextAction').focus();
   } else if (data.jumpLength !== undefined) {
     query(`#length-${Number(data.jumpLength)}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   } else if (data.qualitySequence !== undefined) {
@@ -2545,7 +2617,7 @@ async function onClick(event) {
       toast('Session removed from view. Saved annotations are unchanged.');
     }
   } else if (data.clear) {
-    if (confirm('Clear stored notes, equipment and length-quality decisions? FIT files on disk will not be deleted.')) {
+    if (confirm('Clear stored notes, equipment, stroke and fins markings, and length-quality decisions? FIT files on disk will not be deleted.')) {
       try { await clearSavedNotes(); }
       catch (error) { alert(`Unable to clear notes: ${error.message}`); }
     }
@@ -2615,7 +2687,68 @@ function saveReferencePaces() {
   toast(message);
 }
 
-function onSubmit(event) {
+async function saveLengthContext(form) {
+  const session = selectedSession();
+  if (!session || session.sport !== 'pool') return;
+
+  const first = query('#contextFirst').valueAsNumber;
+  const last = query('#contextLast').valueAsNumber;
+  const action = query('#contextAction').value;
+  if (!Number.isInteger(first) || !Number.isInteger(last) || first < 1 ||
+      last < first || last > session.lengths.length) {
+    toast('Enter a valid range of record numbers.');
+    return;
+  }
+  if (!['fins', 'no-fins', 'Freestyle', 'Other stroke', 'recorded'].includes(action)) return;
+
+  const updated = { ...session.lengthContext };
+  let count = 0;
+  for (let index = first - 1; index < last; index++) {
+    const length = session.lengths[index];
+    if (length.isRest) continue;
+    const sequence = Number.isInteger(length.sequence) ? length.sequence : index;
+    const context = { ...updated[sequence] };
+    if (action === 'fins') context.fins = true;
+    else if (action === 'no-fins') delete context.fins;
+    else if (action === 'recorded') delete context.stroke;
+    else context.stroke = action;
+    if (Object.keys(context).length) updated[sequence] = context;
+    else delete updated[sequence];
+    count++;
+  }
+  if (!count) {
+    toast('Select at least one swimming record.');
+    return;
+  }
+
+  const previous = session.lengthContext;
+  const submit = form.querySelector('button[type="submit"]');
+  submit.disabled = true;
+  session.lengthContext = updated;
+  try {
+    await saveAnnotations(session);
+    render();
+    if (state.page === 'session-detail' && selectedSession()?.id === session.id) {
+      query('#contextFirst').value = first;
+      query('#contextLast').value = last;
+      query('#contextAction').value = action;
+      query('#contextAction').focus({ preventScroll: true });
+    }
+    toast('Stroke and equipment markings saved.');
+  } catch (error) {
+    if (session.lengthContext === updated) session.lengthContext = previous;
+    alert(`Unable to save stroke or equipment markings: ${error.message}`);
+  } finally {
+    submit.disabled = false;
+  }
+}
+
+async function onSubmit(event) {
+  if (event.target.id === 'lengthContextForm') {
+    event.preventDefault();
+    await saveLengthContext(event.target);
+    return;
+  }
   if (event.target.id === 'referencePacesForm') {
     event.preventDefault();
     saveReferencePaces();

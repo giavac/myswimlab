@@ -39,6 +39,7 @@ FIT bytes, device-specific profile fields, or access to the browser.
   ],
   notes: '',                         // user annotation
   equipment: [],                     // user annotation
+  lengthContext: { '12': { fins: true, stroke: 'Freestyle' } },
   lengthOverrides: { '16': 'keep' },   // optional manual decisions, indexed by sequence
   importedAt: '2026-11-10T17:00:00.000Z'
 }
@@ -85,3 +86,13 @@ Displayed distance and aggregate volume remove excluded lengths. If the FIT
 total is already below the sum of recorded lengths, that difference is
 credited toward the correction to avoid double subtraction. Swim time, FIT timer time, and elapsed time retain their original values. Raw session objects and their IDs are
 preserved in storage and backups.
+
+
+## Stroke and equipment markings
+
+`lengthContext` is optional and keyed by source record sequence. Each entry
+can mark fins with `fins: true` or override the recorded stroke with
+`stroke: 'Freestyle'` or `stroke: 'Other stroke'`. Markings are saved with
+annotations and travel with JSON backups. Recorded other strokes and lengths
+marked with fins break an eligible best-effort segment. Missing stroke data
+remains eligible. Stroke and equipment markings leave volume totals intact.

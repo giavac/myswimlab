@@ -4,7 +4,7 @@ import {
 } from '../analytics/metrics.js';
 import { icon, escapeHtml, tag, recordNumber } from './shared.js';
 import { assessLengths, paceTotals } from '../analytics/length-quality.js';
-import { BEST_DISTANCES, distanceBests } from '../analytics/best-efforts.js';
+import { BEST_DISTANCES, distanceBests, lengthContext } from '../analytics/best-efforts.js';
 import { intervals, intervalSets } from '../analytics/intervals.js';
 import { sortedSessions } from '../state.js';
 
@@ -98,6 +98,7 @@ export function lengthTable(session) {
   const flags = assessLengths(session);
   const rows = lengths.map((length, index) => {
     const flag = flags[index];
+    const context = length.isRest ? null : lengthContext(session, index);
     const sequence = Number.isInteger(length.sequence) ? length.sequence : index;
     const status = flag.manual === 'keep' ? 'Kept manually'
       : flag.manual === 'exclude' ? 'Excluded manually'
@@ -113,7 +114,7 @@ export function lengthTable(session) {
     return `
       <tr id="length-${index}" class="${flag.excluded ? 'excluded-length' : ''}">
         <td>${flag.excluded ? '▲ ' : ''}${recordNumber(index)}</td>
-        <td>${length.isRest ? tag('Rest') : tag('Swim', 'real')}</td>
+        <td>${context ? `${escapeHtml(context.stroke)}${context.fins ? ' · Fins' : ''}` : tag('Rest')}</td>
         <td>${formatSeconds(length.duration)}</td>
         <td>${length.isRest || !length.distance ? '—' : formatSeconds(length.duration * 100 / length.distance)}</td>
         <td>${formatNumber(length.strokes)}</td>
@@ -125,7 +126,7 @@ export function lengthTable(session) {
   return `
     <div class="length-scroll">
       <table>
-        <thead><tr><th>Rec</th><th>Type</th><th>Duration</th><th>Pace</th><th>Strokes</th><th>Cadence</th><th>Quality control</th></tr></thead>
+        <thead><tr><th>Rec</th><th>Stroke / equipment</th><th>Duration</th><th>Pace</th><th>Strokes</th><th>Cadence</th><th>Quality control</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>`;
@@ -140,7 +141,13 @@ export function intervalTable(session, recorded = intervals(session, assessLengt
   const distance = interval => interval.distance / (session.poolUnit === 'yd' ? 0.9144 : 1);
   const setName = set => `${set.intervals.length > 1 ? `${set.intervals.length} × ` : ''}${formatNumber(distance(set.intervals[0]))} ${unit}`;
 
-  const rows = sets.map(set => set.intervals.map((interval, position) => `
+  const rows = sets.map(set => set.intervals.map((interval, position) => {
+    const context = session.lengths.slice(interval.first, interval.last + 1)
+      .map((_, offset) => lengthContext(session, interval.first + offset));
+    const strokes = new Set(context.map(length => length.stroke));
+    const stroke = strokes.size === 1 ? strokes.values().next().value : 'Mixed strokes';
+    const fins = context.filter(length => length.fins).length;
+    return `
       <tr class="interval-row${position === 0 ? ' set-start' : ''}">
         <td class="set-name">${position === 0 ? setName(set) : ''}</td>
         <td>${position + 1}</td>
@@ -148,14 +155,18 @@ export function intervalTable(session, recorded = intervals(session, assessLengt
         <td>${formatSeconds(interval.duration)}</td>
         <td>${formatSeconds(interval.duration * 100 / distance(interval))}</td>
         <td>${formatNumber(interval.strokes)}</td>
+        <td>${escapeHtml(stroke)}${fins === context.length ? ' · Fins' : fins ? ' · Some lengths with fins' : ''}
+          <button type="button" class="quality-jump" data-context-first="${interval.first + 1}"
+            data-context-last="${interval.last + 1}">Edit REC ${recordNumber(interval.first)}–${recordNumber(interval.last)}</button></td>
         <td>${formatSeconds(interval.rest)}</td>
         <td>${interval.rest === null ? '—' : formatSeconds(interval.duration + interval.rest)}</td>
-      </tr>`).join('')).join('');
+      </tr>`;
+  }).join('')).join('');
 
   return `
     <p class="interval-summary">${sets.map(setName).join(' · ')}</p>
     <div class="tablewrap"><table>
-      <thead><tr><th>Set</th><th>#</th><th>Dist</th><th>Time</th><th>Pace /100${unit}</th><th>Strokes</th><th>Rest after</th><th>Restart after</th></tr></thead>
+      <thead><tr><th>Set</th><th>#</th><th>Dist</th><th>Time</th><th>Pace /100${unit}</th><th>Strokes</th><th>Stroke / equipment</th><th>Rest after</th><th>Restart after</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
 }

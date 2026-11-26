@@ -17,6 +17,7 @@ const lengthFields = [
   [4, 4, 6],     // duration in milliseconds
   [3, 4, 6],     // elapsed in milliseconds
   [5, 2, 4],     // number of strokes
+  [7, 1, 0],     // swim stroke enum
   [12, 1, 2],    // length type: active=1, rest=0
   [254, 2, 4],   // message index
   [2, 4, 6]      // start timestamp
@@ -47,7 +48,7 @@ function dataRecord(local, fields, values) {
 export function makeFit({
   durations = [23, 24, 22, 25], restAfter = [], subSport = 17,
   sport = 5, poolMeters = 25, poolUnit = 0, additionalSession = false,
-  omitTimestamps = false, omitSwimTime = false, restSeconds = 10, strokes = []
+  omitTimestamps = false, omitSwimTime = false, restSeconds = 10, strokes = [], strokeTypes = []
 } = {}) {
   const sessionLayout = sessionFields.filter(([number]) =>
     !(omitTimestamps && number === 2) && !(omitSwimTime && number === 78));
@@ -72,12 +73,12 @@ export function makeFit({
   for (let i = 0; i < durations.length; i++) {
     data.push(dataRecord(1, lengthLayout, {
       4: durations[i] * 1000, 3: durations[i] * 1000,
-      5: strokes[i] ?? 20 + i, 12: 1, 254: index++, 2: timestamp + elapsed
+      5: strokes[i] ?? 20 + i, 7: strokeTypes[i] ?? 255, 12: 1, 254: index++, 2: timestamp + elapsed
     }));
     elapsed += durations[i];
     if (restAfter.includes(i)) {
       data.push(dataRecord(1, lengthLayout, {
-        4: restSeconds * 1000, 3: restSeconds * 1000, 5: 0, 12: 0,
+        4: restSeconds * 1000, 3: restSeconds * 1000, 5: 0, 7: 255, 12: 0,
         254: index++, 2: timestamp + elapsed
       }));
       elapsed += restSeconds;

@@ -4,7 +4,7 @@
  * This is intentionally the only module that coordinates all four layers.
  * FIT decoder, analytics, and file importer never import anything from the UI.
  */
-import { state, replaceSessions } from './state.js';
+import { state, replaceSessions, selectedSession } from './state.js';
 import { parseFitFiles } from './data/fit-import.js';
 import { validateBackup } from './data/backup.js';
 import {
@@ -34,6 +34,7 @@ async function restoreAnnotations(sessions) {
         session.notes = old.notes || '';
         session.equipment = old.equipment || [];
         session.lengthOverrides = old.lengthOverrides || {};
+        session.lengthContext = old.lengthContext || {};
       }
     }
   } catch (error) {
@@ -82,9 +83,10 @@ async function clearSavedNotes() {
     session.notes = '';
     session.equipment = [];
     session.lengthOverrides = {};
+    session.lengthContext = {};
   }
   render();
-  toast('Saved annotations and length decisions cleared.');
+  toast('Saved annotations cleared.');
 }
 
 async function restoreBackup(file) {
@@ -141,6 +143,10 @@ async function onClick(event) {
     state.selectedSessionId = data.openSession || data.select;
     state.page = 'session-detail';
     render();
+  } else if (data.contextFirst) {
+    query('#contextFirst').value = data.contextFirst;
+    query('#contextLast').value = data.contextLast;
+    query('#contextAction').focus();
   } else if (data.jumpLength !== undefined) {
     query(`#length-${Number(data.jumpLength)}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   } else if (data.qualitySequence !== undefined) {
@@ -162,7 +168,7 @@ async function onClick(event) {
       toast('Session removed from view. Saved annotations are unchanged.');
     }
   } else if (data.clear) {
-    if (confirm('Clear stored notes, equipment and length-quality decisions? FIT files on disk will not be deleted.')) {
+    if (confirm('Clear stored notes, equipment, stroke and fins markings, and length-quality decisions? FIT files on disk will not be deleted.')) {
       try { await clearSavedNotes(); }
       catch (error) { alert(`Unable to clear notes: ${error.message}`); }
     }
@@ -232,7 +238,68 @@ function saveReferencePaces() {
   toast(message);
 }
 
-function onSubmit(event) {
+async function saveLengthContext(form) {
+  const session = selectedSession();
+  if (!session || session.sport !== 'pool') return;
+
+  const first = query('#contextFirst').valueAsNumber;
+  const last = query('#contextLast').valueAsNumber;
+  const action = query('#contextAction').value;
+  if (!Number.isInteger(first) || !Number.isInteger(last) || first < 1 ||
+      last < first || last > session.lengths.length) {
+    toast('Enter a valid range of record numbers.');
+    return;
+  }
+  if (!['fins', 'no-fins', 'Freestyle', 'Other stroke', 'recorded'].includes(action)) return;
+
+  const updated = { ...session.lengthContext };
+  let count = 0;
+  for (let index = first - 1; index < last; index++) {
+    const length = session.lengths[index];
+    if (length.isRest) continue;
+    const sequence = Number.isInteger(length.sequence) ? length.sequence : index;
+    const context = { ...updated[sequence] };
+    if (action === 'fins') context.fins = true;
+    else if (action === 'no-fins') delete context.fins;
+    else if (action === 'recorded') delete context.stroke;
+    else context.stroke = action;
+    if (Object.keys(context).length) updated[sequence] = context;
+    else delete updated[sequence];
+    count++;
+  }
+  if (!count) {
+    toast('Select at least one swimming record.');
+    return;
+  }
+
+  const previous = session.lengthContext;
+  const submit = form.querySelector('button[type="submit"]');
+  submit.disabled = true;
+  session.lengthContext = updated;
+  try {
+    await saveAnnotations(session);
+    render();
+    if (state.page === 'session-detail' && selectedSession()?.id === session.id) {
+      query('#contextFirst').value = first;
+      query('#contextLast').value = last;
+      query('#contextAction').value = action;
+      query('#contextAction').focus({ preventScroll: true });
+    }
+    toast('Stroke and equipment markings saved.');
+  } catch (error) {
+    if (session.lengthContext === updated) session.lengthContext = previous;
+    alert(`Unable to save stroke or equipment markings: ${error.message}`);
+  } finally {
+    submit.disabled = false;
+  }
+}
+
+async function onSubmit(event) {
+  if (event.target.id === 'lengthContextForm') {
+    event.preventDefault();
+    await saveLengthContext(event.target);
+    return;
+  }
   if (event.target.id === 'referencePacesForm') {
     event.preventDefault();
     saveReferencePaces();

@@ -380,6 +380,17 @@ textarea { min-height: 140px; }
 .empty-symbol { color: var(--accent); }
 .empty h3 { font-size: 18px; margin: 12px 0 0; }
 .empty p { color: var(--ink-2); font-size: 13px; margin: 8px 0 18px; }
+#lengthContextForm .buttonstack { align-items: end; }
+#lengthContextForm label { display: grid; gap: 4px; }
+#lengthContextForm input, #lengthContextForm select {
+  min-height: 40px;
+  border: 1px solid var(--line-strong);
+  background: var(--field);
+  color: var(--ink);
+  padding: 0 8px;
+  font: inherit;
+}
+#lengthContextForm input { width: 6ch; }
 .buttonstack { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
 
 #toast {
