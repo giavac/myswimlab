@@ -25,12 +25,13 @@ activity. **The personal FIT file is not included in this repository.**
 
 ## Effects
 
-- **Raw totals** (FIT distance, swim time, rest, elapsed) stay unchanged.
-- A flagged length interrupts best-effort searches. It is omitted from
-  per-length pace/stroke charts and stroke statistics.
-- Filtered average pace excludes **both its duration and distance** if the
-  length totals can be reconciled with the FIT session. Otherwise the
-  unadjusted session pace is retained.
+- **Raw totals** (FIT distance, swim time, rest, elapsed) stay unchanged in
+  the source data. Displayed distance omits flagged lengths and swim time is
+  retained. Distance already omitted by the watch is credited toward the correction.
+- Excluded lengths contribute time and zero distance to a continuous best effort.
+  Recorded rests and gaps in the source length indices still break an effort.
+- Per-length pace and stroke charts, stroke statistics, interval totals, and
+  weekly volumes use the corrected data.
 - The table highlights excluded rows. **Keep** overrides an automatic flag,
   **Exclude** flags another length manually, and **Reset** removes the override.
 - Manual decisions are indexed by original `sequence`, persist with
@@ -41,10 +42,6 @@ activity. **The personal FIT file is not included in this repository.**
 - The rule is deliberately conservative and **does not identify all errors**.
   It cannot confirm whether a fast length was genuine, and requires reliable
   per-length stroke counts for automatic classification.
-- An occasional incorrectly measured length can affect the reported total
-  distance. We do not attempt to guess what the actual distance or duration
-  should have been. A future correction workflow could let users explicitly
-  specify corrected distances with an audit trail.
 - For coached sets mixing drills, strokes, fins and sprint intervals, session
   medians may not fully represent each workload. Better set segmentation is
   a possible future improvement.

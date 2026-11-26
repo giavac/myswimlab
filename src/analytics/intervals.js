@@ -1,7 +1,7 @@
 /**
  * Swim intervals derived from pool lengths. Garmin closes an interval when the
  * swimmer starts a rest, so the active lengths between rest markers are one
- * interval. Values are as recorded: quality decisions do not change them.
+ * interval. Pass quality decisions to remove excluded distance while retaining time.
  */
 import { active, assessLengths } from './length-quality.js';
 
@@ -10,7 +10,7 @@ import { active, assessLengths } from './length-quality.js';
  *   duration: number, strokes: number|null, rest: number|null}[]}
  *   `first`/`last` are length indices; distance is meters; times are seconds.
  */
-export function intervals(session) {
+export function intervals(session, quality = []) {
   const result = [];
   let current = null;
 
@@ -27,14 +27,15 @@ export function intervals(session) {
       result.push(current);
     }
     current.last = index;
+    current.duration += length.duration;
+    if (quality[index]?.excluded) return;
     current.lengths += 1;
     current.distance += length.distance;
-    current.duration += length.duration;
     current.strokes = Number.isFinite(length.strokes) && current.strokes !== null
       ? current.strokes + length.strokes : null;
   });
 
-  return result;
+  return result.filter(interval => interval.lengths > 0);
 }
 
 /** Group consecutive intervals by length count by default, e.g. 5 × 200 m. */
@@ -88,7 +89,7 @@ export function setsByRepeatDistance(sessions, unit) {
 
   for (const session of sessions) {
     if (session.sport !== 'pool' || (session.poolUnit || 'm') !== unit) continue;
-    const recorded = intervals(session);
+    const recorded = intervals(session, assessLengths(session));
     for (const { intervals: repeats } of intervalSets(recorded, repeatDistance)) {
       const distance = repeatDistance(repeats[0]);
       const group = groups.get(distance) || { distance, totalDistance: 0, duration: 0, sets: [], sessions: new Set() };

@@ -57,7 +57,9 @@ FIT bytes, device-specific profile fields, or access to the browser.
 - `timerDuration` preserves the raw FIT session timer (which may include rests). `restDuration` is the sum of recorded idle lengths; `elapsed` includes pauses. `durationBasis` describes the selected time source (`active-lengths`, `session-swim-time`, or `timer`).
 - Session IDs continue to use the original FIT timer duration for backward compatibility with previously saved annotations. Time values in old JSON backups are not automatically recalculated; reimport their original FIT files for corrected swimming time.
 - A best continuous effort cannot pass through a rest length or a gap in the
-  source length indices.
+  source length indices. Excluded lengths inside an otherwise continuous effort
+  contribute time and zero distance. Full bouts also include flagged time at
+  the start and end of the bout.
 - The importer produces one session from a FIT file. Files containing more than
   one swimming session are rejected with an explicit message (rather than
   silently merging lengths). Multi-sport activities are not fully supported.
@@ -79,7 +81,7 @@ Missing keys mean "follow the automatic conservative detector". These
 annotations never alter the individual FIT length values or the session's
 recorded distance or duration. See `src/analytics/length-quality.js`.
 
-`pace(session)` and `summary(sessions).pace` are quality-filtered when the
-session's active lengths match the raw session totals. Quality-excluded lengths
-are boundaries in best-effort searches. `summary().distance` and `.duration`
-remain original recorded totals; `summary().excluded` counts filtered lengths.
+Displayed distance and aggregate volume remove excluded lengths. If the FIT
+total is already below the sum of recorded lengths, that difference is
+credited toward the correction to avoid double subtraction. Swim time, FIT timer time, and elapsed time retain their original values. Raw session objects and their IDs are
+preserved in storage and backups.

@@ -70,30 +70,30 @@ export function assessLengths(session) {
 }
 
 /**
- * Return totals suitable for a quality-filtered pace estimate.
- * Only adjust a pool session when active lengths cover the reported FIT
- * swimming distance and duration; otherwise retain the session totals.
+ * Correct displayed pool distance while retaining the recorded swim time.
  */
 export function paceTotals(session) {
   const original = { distance: session.distance || 0, duration: session.duration || 0, excluded: 0 };
-  if (session.sport !== 'pool' || session.durationBasis !== 'active-lengths') return original;
+  if (session.sport !== 'pool') return original;
 
   const lengths = session.lengths || [];
-  const activeLengths = lengths.filter(active);
-  const fullDistance = activeLengths.reduce((sum, length) => sum + length.distance, 0);
-  const fullDuration = activeLengths.reduce((sum, length) => sum + length.duration, 0);
-  if (Math.abs(fullDistance - session.distance) > 0.5 ||
-      Math.abs(fullDuration - session.duration) > 0.5) return original;
+  const flags = assessLengths(session);
+  let fullDistance = 0;
+  let removedDistance = 0;
+  let excluded = 0;
+  lengths.forEach((length, index) => {
+    if (!active(length)) return;
+    fullDistance += length.distance;
+    if (flags[index].excluded) {
+      removedDistance += length.distance;
+      excluded++;
+    }
+  });
+  if (!excluded) return original;
 
-  const assessments = assessLengths(session);
-  const excluded = lengths.filter((length, index) => active(length) && assessments[index].excluded);
-  if (!excluded.length) return original;
-
-  const removedDistance = excluded.reduce((sum, length) => sum + length.distance, 0);
-  const removedDuration = excluded.reduce((sum, length) => sum + length.duration, 0);
-  return {
-    distance: Math.max(0, session.distance - removedDistance),
-    duration: Math.max(0, session.duration - removedDuration),
-    excluded: excluded.length
-  };
+  // Reconcile what the watch already omitted before subtracting recorded lengths.
+  // Keep any distance outside the length records when the FIT total is larger.
+  const alreadyOmitted = Math.max(0, fullDistance - original.distance);
+  const distance = Math.max(0, original.distance - Math.max(0, removedDistance - alreadyOmitted));
+  return { distance, duration: original.duration, excluded };
 }
